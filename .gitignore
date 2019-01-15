@@ -1,5 +1,10 @@
-# Object file
-*.o
-
-# Ada Library Information
-*.ali
+#python byte code.
+*.pyc
+#jupyter noteboks checkpoints.
+.ipynb_checkpoints
+#APES environment
+APES/
+#Execlude logs
+logs/
+#Execlude details output
+output/
