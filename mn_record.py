@@ -3,7 +3,7 @@
     # Agent spawn in bottom right square.
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--totalsteps', type=int, default=1000000)# much more ( 1000 -> 10,000) (should be around 1 million steps)
+parser.add_argument('--num_eps', type=int, default=100)
 parser.add_argument('--max_timesteps', type=int, default=80)# 1000 
 parser.add_argument('--rwrdschem',nargs='+',default=[0,1,-2.5],type=float) #(calculated should be (1000 reward , -0.1 punish per step)
 parser.add_argument('--svision',type=int,default=360)
@@ -11,7 +11,7 @@ parser.add_argument('--details',type=str,default='')
 parser.add_argument('--train_m',type=str,default='')
 parser.add_argument('--naction',type=int,default=0)
 parser.add_argument('--night_length',type=int,default=20)
-parser.add_argument('--clue',default=True, action='store_true')
+parser.add_argument('--clue',action='store_true')
 parser.add_argument('--nofood', action='store_true')
 parser.add_argument('--render', action='store_true')
 args = parser.parse_args()
@@ -21,11 +21,16 @@ from keras.models import Model,load_model
 from APES import *
 from time import time
 import os
+import pandas as pd
 #The folder name were we created subfolder to store each experiments.  
 EF = 'output'
+data = {}
+for i in range(args.max_timesteps):
+    data[i]=[]
+
 def WriteInfo(epis,t,epis_rwrd,start,rwsc,eptype,trqavg,tsqavg,eaten_num,night_home,morning_home):
     global File_Signature
-    with open('{}/{}/exp_details.csv'.format(EF,args.train_m),'a') as outp:
+    with open('{}/{}/exp_details_test.csv'.format(EF,args.train_m),'a') as outp:
         outp.write('{},{},{},{},{},{},{},{},{},{},{}\n'.format(epis,t,epis_rwrd,start,rwsc,eptype,trqavg,tsqavg,eaten_num,night_home,morning_home))
 
 def New_Reward_Function(agents,foods,rwrdschem,world,AES,Terminated):
@@ -134,31 +139,26 @@ def SetupEnvironment():
     print ('Taken:',Start)
     return game
 def trace_tracker(prev_h,cur_h,prev_f,cur_f):
-    h_situation=''
-    f_situation=''
+    status='--'
     #Previously was in home, but not now
     if prev_h and (not cur_h):
-        h_situation='XH' #Agent Exited home
+        status='XH' #Agent Exited home
     #Previously was out, but now in home
     elif not prev_h and cur_h:
-        h_situation='EH' #Agent Entered home
-    else:
-        h_situation='--' #Neutral
+        status='EH' #Agent Entered home
 
     #Previously was in field, but not now
     if prev_f and (not cur_f):
-        f_situation='XF' #Agent Exited field
+        status='XF' #Agent Exited field
     #Previously was out, but now in field
     elif not prev_f and cur_f:
-        f_situation='EF' #Agent Entered field
-    else:
-        f_situation='--'
-    return h_situation,f_situation
+        status='EF' #Agent Entered field
+
+    return status
 
         
 TestingCounter=0
 def TryModel(model,game):
-    #print('Testing Target Model')
     global AIAgent,TestingCounter
     TestingCounter+=1
     if args.render:
@@ -177,6 +177,7 @@ def TryModel(model,game):
         rest = np.concatenate([rest,[not day]])
     all_cnn = np.zeros(conv_size,dtype=np.int8)
     all_rest = np.zeros(rest_size,dtype=np.int8)
+    all_activity=[]
     if args.render:
         writer.writeFrame(np.array(img*255,dtype=np.uint8))
         writer2.writeFrame(np.array(game.AgentViewPoint(AIAgent.ID)*255,dtype=np.uint8))
@@ -215,7 +216,9 @@ def TryModel(model,game):
             eaten+=1
         athome = game.world[4,4]==AIAgent.ID
         atfield= np.argwhere(game.world[:3,:3]==1001).shape[0]>0
-        print('s:{},h:{},f:{},d:{},result:{}'.format(t,athome,atfield,day,trace_tracker(prev_home,athome,prev_field,atfield)))
+        data[t].append(trace_tracker(prev_home,athome,prev_field,atfield))
+        #print('s:{},h:{},f:{},d:{},result:{}'.format(t,athome,atfield,day,data[i][-1]))
+        #print(trace_tracker(prev_home,athome,prev_field,atfield))
         prev_home = athome
         prev_field=atfield
         if (not day) and (not athome):
@@ -239,7 +242,7 @@ def TryModel(model,game):
 
     print(eaten)
     Start = time()-Start
-    print(t)
+    return eaten,Start
     #WriteInfo(TestingCounter,t+1,episode_reward,Start,rwtc,'Test','0','0',eaten,night_home,morning_home)
 
 game = SetupEnvironment()
@@ -263,5 +266,9 @@ if args.train_m=='':
 else:
     model = load_model('{}/{}/MOD/model.h5'.format(EF,args.train_m))
 fs = (Settings.WorldSize[0]*Settings.BlockSize[0],Settings.WorldSize[1]*Settings.BlockSize[1])
-for i in range(1):
-    TryModel(model,game)
+for i in range(args.num_eps):
+    ate,sptime = TryModel(model,game)
+    print('episode:{},ate:{},spent:{} seconds'.format(i,ate,round(sptime,3)))
+
+df= pd.DataFrame(data=data)
+df.to_csv('{}/{}/df.csv'.format(EF,args.train_m),index=False)
