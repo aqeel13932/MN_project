@@ -193,6 +193,7 @@ def createLayers(insize,in_conv,naction):
     con_process = TimeDistributed(convolutional.Conv2D(filters=6,kernel_size=(3,3),activation="relu",padding="same",strides=1))(con_process)
     con_process = TimeDistributed(Flatten())(con_process)
     x = Input(shape=insize)#env.observation_space.shape)
+    #h = merge.Concatenate(axis=1)([con_process,x])
     h = merge([con_process,x],mode="concat")
     h = TimeDistributed(Dense(args.hidden_size, activation=args.activation))(h)
     h = TimeDistributed(Dense(args.hidden_size, activation=args.activation))(h)
@@ -317,7 +318,11 @@ def TryModel(model,game):
     Start = time()-Start
     print(t)
     WriteInfo(TestingCounter,t+1,episode_reward,Start,rwtc,'Test','0','0',eaten,night_home,morning_home)
-
+def Remove_Uneeded():
+    global AIAgent
+    AIAgent.NNFeed['observed']=''
+    AIAgent.NNFeed['obstacles']=''
+        
 game = SetupEnvironment()
 
 AIAgent = game.agents[1001]
@@ -328,7 +333,7 @@ worldsize*(Agents count +3(food,observed,obstacles)) + Agents count *4 (orintati
 '''
 game.GenerateWorld()
 game.Step()
-conv_size=(args.max_timesteps,Settings.WorldSize[0],Settings.WorldSize[1],4,)
+conv_size=(args.max_timesteps,Settings.WorldSize[0],Settings.WorldSize[1],2,)
 naction =  Settings.PossibleActions.shape[0]
 if args.clue:
     rest_size=(args.max_timesteps,args.naction*5+5,)
