@@ -72,12 +72,44 @@ def Calculate_TSNE(data,seed=10,n_comp=2,counter=80,ranges=[0,1,2,3,4,5,6,7,8,9]
         fig.set_figwidth(7)
         ax.scatter(x=y[:,0],y=y[:,1])
         for i in range(data.shape[0]):
+            #if i ==77:
+            #    ax.annotate(str(i), (y[i,0], y[i,1]),color='r')
+            #else:
             ax.annotate(str(i), (y[i,0], y[i,1]))
         plt.title('perplixty:{}'.format(j*5))
         #plt.ylim(0,1)
         #plt.xlim(-3,-2)
         #plt.show()
         
+def Plot_neurons_activations(neurons,plot_neurons=[0,1,2],merge=False):
+    """
+    plot specific neurons activations using a provided data set. The function will draw 2x * plots
+    each represent a neuron.
+    Input:
+        neurons: dataset (320,128) (timestep,neuron)
+        plot_neurons: a list of neurons to be plotted between [0,127]
+        merge: draw all activations on same plot. Default: false.
+    """
+    if merge:
+        plt.figure(figsize=(13,7))
+        for i in plot_neurons:
+            plt.plot(neurons[:,i],label=i)
+
+        plt.legend(title="Neurons")
+        plt.title('neurons:{}'.format(plot_neurons))
+        return
+    x=13
+    neurons_number = len(plot_neurons)
+    y=3*neurons_number
+    plt.figure(figsize=(x,y))
+    counter=1
+    for i in plot_neurons:
+        ax = plt.subplot(neurons_number,2,counter)
+        ax.plot(neurons[:,i])
+        counter +=1
+        ax.set_title(i)
+    plt.tight_layout()
+    
 def Get_simulations_data(model,simulation):
     return pd.read_csv('output/{}/states_{}.csv'.format(model,simulation),header=None)
 
