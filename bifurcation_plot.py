@@ -10,7 +10,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from os import listdir
 from os.path import isfile, join
-
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--neuron',type=int,default=0)
+parser.add_argument('--simulation',type=int,default=0)
+parser.add_argument('--plot',action='store_true')
+args = parser.parse_args()
 def Get_LSTM_Files(model,simulation):
     episode=100
     lstm_files = []
@@ -20,7 +25,7 @@ def Get_LSTM_Files(model,simulation):
         episode+=100
     return lstm_files
 
-def calculate_PRC_mean(model,simulation,neuron,version=None):
+def calculate_PRC_mean(model,simulation,neuron,version=None,All=True):
     if version is not None:
         
         x = np.load('output/{}/PRC_data/lstm_states_{}_model_eps:{}.h5.npy'.format(model,simulation,version))
@@ -40,6 +45,7 @@ def calculate_PRC_mean(model,simulation,neuron,version=None):
             z[j*40:j*40+40]=j
         z = z[:-1]
         z = z*40
+
     return yt[1:],difference,z
 
 def calculate_PRC(model,simulation,neuron):
@@ -60,7 +66,7 @@ def calculate_PRC(model,simulation,neuron):
 # In[4]:
 
 
-def Plot_PRC_versions(model,simulation,day):
+def Plot_PRC_versions(model,simulation,day,neuron):
     #Getting available mid-point
     versions = Get_LSTM_Files(model,simulation)
     v = len(versions)
@@ -69,7 +75,7 @@ def Plot_PRC_versions(model,simulation,day):
     z = np.zeros((v,319))
     number = np.zeros(v)
     for i in range(v):
-        yt[i],difference[i],z[i] = calculate_PRC_mean(64,0,99,version=versions[i])
+        yt[i],difference[i],z[i] = calculate_PRC_mean(64,0,neuron,version=versions[i])
         number[i]= versions[i]
     
     #Generate 8 colors
@@ -79,14 +85,17 @@ def Plot_PRC_versions(model,simulation,day):
     wday_start = 40*day-1
     wday_end= wday_start+40
     for i in range(v):
-        ax.scatter(yt[i,wday_start:wday_end],difference[i,wday_start:wday_end],z[i,wday_start:wday_end],color=colors[i])
+        if args.plot:
+            ax.plot(yt[i,wday_start:wday_end],difference[i,wday_start:wday_end],z[i,wday_start:wday_end],color=colors[i])
+        else:
+            ax.scatter(yt[i,wday_start:wday_end],difference[i,wday_start:wday_end],z[i,wday_start:wday_end],color=colors[i])
     plt.show()
 
 
 # In[5]:
 
 
-Plot_PRC_versions(64,0,5)
+Plot_PRC_versions(64,args.simulation,5,args.neuron)
 
 
 # 
