@@ -1,5 +1,6 @@
 #22/04/2020 Added experiments for jetlag, first day disturbtion, random start of day.(1000 episode each)
 #12/06/2020 Added experiments for PRC 
+#06/10/2020 Added experiments for 50 days and 1 time step manipluation for 3rd day and 7th day.
 : <<'END'
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 30 --num_eps 1000 --nofood  >logs.txt &
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 39 --num_eps 1000 --nofood --clue >logs.txt &
@@ -59,7 +60,6 @@ do
 			nohup srun --partition=amd --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m $i --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/"${i}_${j}.out" &
 		done
 done
-END
 for i in `seq 64 70`;
 do 
 	for j in `seq 0 21`;
@@ -68,3 +68,21 @@ do
 			nohup srun --partition=amd --time=3- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m $i --episode_length 320 --Scenario $j --num_eps 100 --clue >logs/"${i}_${j}.out" &
 		done
 done
+
+nohup srun --partition=amd --time=3- --mem=30000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 2000 --Scenario 22 --num_eps 1000 --clue >logs/64_22.out &
+nohup srun --partition=amd --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario 23 --num_eps 1000 --clue >logs/64_23.out &
+: <<'END'
+# Test the pretrubation:
+for j in `seq 23 102`;
+	do
+		echo $j
+		nohup srun --partition=amd --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/64_"${j}.out" &
+	done
+END
+# some simulations got stuck, redoing them with different cluster option.
+exp=(54 57 58 59 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102)
+for j in ${exp[@]};
+	do
+		echo $j
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/64_"${j}.out" &
+	done
