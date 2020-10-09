@@ -1,6 +1,8 @@
-#22/04/2020 Added experiments for jetlag, first day disturbtion, random start of day.(1000 episode each)
-#12/06/2020 Added experiments for PRC 
-#06/10/2020 Added experiments for 50 days and 1 time step manipluation for 3rd day and 7th day.
+#22/04/2020 Added simulations for jetlag, first day disturbtion, random start of day.(1000 episode each)
+#12/06/2020 Added simulations for PRC 
+#06/10/2020 Added simulations for 50 days and 1 time step manipluation for 3rd day and 7th day.
+#08/10/2020 added simulations for 50 days and 1 time steo manipluation for 3rd day and 7th day for model 67.
+#09/10/2020 aaded simulations for jetlage (moving west,moving east) every time step for (3rd,7th) day for both (64,67) models.
 : <<'END'
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 30 --num_eps 1000 --nofood  >logs.txt &
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 39 --num_eps 1000 --nofood --clue >logs.txt &
@@ -78,7 +80,6 @@ for j in `seq 23 102`;
 		echo $j
 		nohup srun --partition=amd --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/64_"${j}.out" &
 	done
-END
 # some simulations got stuck, redoing them with different cluster option.
 exp=(54 57 58 59 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102)
 for j in ${exp[@]};
@@ -86,3 +87,31 @@ for j in ${exp[@]};
 		echo $j
 		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/64_"${j}.out" &
 	done
+nohup srun --partition=main --time=3- --mem=30000 python dynamic_timer_mn_record.py --train_m 67 --episode_length 2000 --Scenario 22 --num_eps 1000 --clue >logs/67_22.out &
+for j in `seq 23 102`;
+	do
+		echo $j
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 67 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/67_"${j}.out" &
+	done
+
+mod=(64 67)
+for m in ${mod[@]};
+do
+	for s in `seq 104 104`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=30000 python dynamic_timer_mn_record.py --train_m $m --episode_length 2000 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+done
+
+END
+
+mod=(64 67)
+for m in ${mod[@]};
+do
+	for s in `seq 105 264`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m $m --episode_length 400 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+done
