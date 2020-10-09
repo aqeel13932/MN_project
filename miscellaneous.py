@@ -154,7 +154,7 @@ def neuron_activity(model,simulation,cycles=2,day_duration=40,figsize=(13,7),lab
         return
     sim = str(simulation)
     factor =10
-    if len(sim)<3:
+    if len(sim)<4:
         sim = Construct_Scenario(Scenarios[simulation])
         print(Scenarios_desc[simulation])
         factor=1
