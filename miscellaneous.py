@@ -4,8 +4,155 @@ import numpy as np
 import pandas.api.types as ptypes
 from sklearn import preprocessing
 from Scenarios import *
+from math import sqrt
 min_max_scaler = preprocessing.MinMaxScaler()
 from sklearn.manifold import TSNE
+
+def All_in_one7seeds(simulation,cycles=2,length=80,label=['','{}','',''],combined=False,condition='XF',size=(13,7),xlim=None):
+    data1=[]
+    data2=[]
+    for i in [64,65,66,67,68,69,70]:
+        data1.append((Get_simulations_data(i,simulation)==condition).values.sum(axis=0))
+        data2.append(Get_lstm_states(i,simulation).sum(axis=(2)).mean(axis=0))
+    label[3]=Scenarios_desc[simulation]+' 7 seeds, ' + condition
+    data1 = np.array(data1)
+    data2 = np.array(data2)
+    data1_m = data1.mean(axis=0)
+    data2_m = data2.mean(axis=0)
+    print(data1.shape)
+    data1_std = data1.std(axis=0)/sqrt(data1.shape[0])
+    data2_std = data2.std(axis=0)/sqrt(data2.shape[0])
+    #data1= (Get_simulations_data(model,simulation)==condition).values.sum(axis=0)
+    #data2= Get_lstm_states(model,simulation).sum(axis=(2)).mean(axis=0)
+    
+    t = np.arange(data1.shape[1])
+
+    fig, ax1 = plt.subplots(figsize=size)
+
+    color = 'tab:red'
+    ax1.set_xlabel(label[0])
+    ax1.set_ylabel(label[1].format(condition), color=color)
+    print(data1_m.shape,data2_m.shape,t.shape)
+    ax1.bar(t, data1_m,yerr=data1_std, color=color,alpha=0.5)
+    ax1.tick_params(axis='y', labelcolor=color)
+    sim = str(simulation)
+    factor =10
+    if len(sim)<3:
+        sim = Construct_Scenario(Scenarios[simulation])
+        print(Scenarios_desc[simulation])
+        factor=1
+    ###### Draw dark span over night code ########
+    i=0
+    count=0
+    while i <len(sim):
+        if sim[i] =='0':
+            count+=1
+            i+=1
+            continue
+        else:
+            if count>0:
+                start= (i-count)*factor
+                ## we used i-1 because the current step is not "1 or morning"
+                end = (i-1)*factor+factor
+                ax1.axvspan(start,end,color='black',alpha=0.1,label='night')
+                count=0
+        i+=1
+    ### this is to handle if night in the end.
+    if count>0:
+        start= (i-count)*factor
+        ## we used i-1 because the current step is not "1 or morning"
+        end = (i-1)*factor+factor
+        ax1.axvspan(start,end,color='black',alpha=0.1,label='night')
+        count=0
+    ###############################################
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
+    ax2.set_ylabel(label[2], color=color)  # we already handled the x-label with ax1
+    ax2.plot(t, data2_m,color=color)
+    ax2.fill_between(t,data2_m+data2_std,data2_m-data2_std,alpha=0.2)
+    ax2.tick_params(axis='y', labelcolor=color)
+    plt.title(label[3])
+    if xlim:
+        plt.xlim(xlim)
+    else:
+        print(data1.shape[0])
+        plt.xlim(0,data1.shape[0])
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.show()
+    
+def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,condition='XF',size=(13,7),xlim=None):
+
+    # Create some mock data
+    data1= (Get_simulations_data(model,simulation)==condition).values.sum(axis=0)
+    data2= Get_lstm_states(model,simulation).sum(axis=(2)).mean(axis=0)
+    data3= Get_rewards_data(model,simulation)
+ 
+    all_average = data3.sum(axis=1).mean()
+    first4days = data3[:,:160].sum(axis=1).mean()
+    last4average = data3[:,160:].sum(axis=1).mean()
+    average = ',Avg rewards:(All:{},1st4days:{},last4days:{})'.format(all_average,first4days,last4average)
+    data3_std= data3.std(axis=0)/sqrt(data3.shape[0])
+    data3 = data3.mean(axis=0)
+    t = np.arange(data1.shape[0])
+
+    fig, ax1 = plt.subplots(figsize=size)
+
+    color = 'tab:red'
+    ax1.set_xlabel(label[0])
+    ax1.set_ylabel(label[1].format(condition), color=color)
+    ax1.bar(t, data1, color=color,alpha=0.5)
+    ax1.tick_params(axis='y', labelcolor=color)
+    sim = str(simulation)
+    factor =10
+    if len(sim)<4:
+        sim = Construct_Scenario(Scenarios[simulation])
+        print(Scenarios_desc[simulation])
+        factor=1
+    ###### Draw dark span over night code ########
+    i=0
+    count=0
+    while i <len(sim):
+        if sim[i] =='0':
+            count+=1
+            i+=1
+            continue
+        else:
+            if count>0:
+                start= (i-count)*factor
+                ## we used i-1 because the current step is not "1 or morning"
+                end = (i-1)*factor+factor
+                ax1.axvspan(start,end,color='black',alpha=0.1,label='night')
+                count=0
+        i+=1
+    ### this is to handle if night in the end.
+    if count>0:
+        start= (i-count)*factor
+        ## we used i-1 because the current step is not "1 or morning"
+        end = (i-1)*factor+factor
+        ax1.axvspan(start,end,color='black',alpha=0.1,label='night')
+        count=0
+    ###############################################
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
+    ax2.set_ylabel(label[2], color=color)  # we already handled the x-label with ax1
+    ax2.plot(t, data2, color=color)
+    ax2.plot(t, data3, color='tab:green')
+    ax2.fill_between(t,data3+data3_std,data3-data3_std,alpha=0.2)
+    ax2.tick_params(axis='y', labelcolor=color)
+    plt.title(label[3]+average+',Model:{}'.format(model))
+    
+    if xlim:
+        plt.xlim(xlim)
+    else:
+        plt.xlim(0,data1.shape[0])
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.show()
+
+
 
 def Normalizedata(data,ids):
     for i in ids:
