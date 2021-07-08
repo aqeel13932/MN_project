@@ -9,6 +9,139 @@ def Construct_Scenario(Scenario):
             morning_or_night="0"
         result+=morning_or_night*int(part[1:])
     return result
+
+# Jetlag everytime step, for 3rd day and 7th day. (moving west or east).
+def Jetlag_exp_generator(base_experiment,counter=22,day=3,morning_night='M',increase=True):
+    exp = []
+    desc=[]
+    ranger= (1,21) if increase else (-20,0)
+    
+    def miao(i):
+        return 20-i if increase else -i
+    
+    for i in range(ranger[0],ranger[1]):
+        counter+=1
+        x = base_experiment.format(counter,20+i,miao(i))
+        exp.append(x)
+        des = '{}:\"10 days-jetlag day {} {} expand_{} by {} step \",'.format(counter,day,morning_night,increase,i)
+        desc.append(des)
+    return exp,desc
+
+# Function to generate the experiment rhythm with changing in 1.
+def Generate_experiments(prefix,suffix,counter=22,day=3,morning_night='M'):
+    exp = []
+    desc=[]
+    counter+=1
+    if morning_night=='M':
+        x =prefix.format(counter)+"N21,M19,N20,M20"+suffix
+        base = "N20,M{},N{},M{},N20,M20"
+    elif morning_night=='N':
+        x =prefix.format(counter)+"N20,M21,N19,M20"+suffix
+        base = "N20,M20,N{},M{},N{},M20"
+    else:
+        raise Exception('morning_night should be either M or N ')
+        
+    
+    x_desc = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,1)
+        
+    #base=
+    exp.append(x)
+    desc.append(x_desc)
+    for i in range(1,19):
+        counter+=1
+        x =prefix.format(counter)+base.format(i,1,19-i)+suffix
+        exp.append(x)
+        des = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,i+1)
+        desc.append(des)
+    counter+=1
+    if morning_night=='M':
+        z = prefix.format(counter)+"N20,M19,N21,M20"+suffix
+    else:
+        z = prefix.format(counter)+"N20,M20,N19,M21"+suffix
+        
+    z_desc = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,20)
+    exp.append(z)
+    desc.append(z_desc)
+    print('\n'.join(map(str, exp))) 
+    print('\n'.join(map(str, desc))) 
+
+# Function to generate the experiment rhythm with changing in 1.
+def Generate_experiments_jetlag_timestep(prefix,suffix,counter=22,day=3,morning_night='M'):
+    exp = []
+    desc=[]
+    counter+=1
+    if morning_night=='M':
+        x =prefix.format(counter)+"N21,M19,N20,M20"+suffix
+        base = "N20,M{},N{},M{},N20,M20"
+    elif morning_night=='N':
+        x =prefix.format(counter)+"N20,M21,N19,M20"+suffix
+        base = "N20,M20,N{},M{},N{},M20"
+    else:
+        raise Exception('morning_night should be either M or N ')
+        
+    
+    x_desc = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,1)
+        
+    #base=
+    exp.append(x)
+    desc.append(x_desc)
+    for i in range(1,19):
+        counter+=1
+        x =prefix.format(counter)+base.format(i,1,19-i)+suffix
+        exp.append(x)
+        des = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,i+1)
+        desc.append(des)
+    counter+=1
+    if morning_night=='M':
+        z = prefix.format(counter)+"N20,M19,N21,M20"+suffix
+    else:
+        z = prefix.format(counter)+"N20,M20,N19,M21"+suffix
+        
+    z_desc = '{}:\"reverse day {} {} step {}\",'.format(counter,day,morning_night,20)
+    exp.append(z)
+    desc.append(z_desc)
+    print('\n'.join(map(str, exp))) 
+    print('\n'.join(map(str, desc)))
+
+# Perturb one timestep in a constant simulation (ex. all night except one time step in the 7th day)
+def Constant_Cue_SinglePertrubation(counter=22,day=3,morning_night='M'):
+    if morning_night not in ['M','N']:
+        raise Exception('morning_night should be either M or N ')
+    exp = []
+    desc=[]
+    counter+=1
+    start_point=(day-1)*40
+    opposit = 'N'if morning_night=='M'else 'M'
+    base="{}:(\"{}{},{}1,{}{}\"),"
+    for i in range(0,40):
+        x = base.format(counter,morning_night,start_point+i,opposit,morning_night,
+                          320-(start_point+i+1))
+        des = '{}:\"All constant {} except day {} step {}\",'.format(counter,morning_night,day,i+1)
+        exp.append(x)
+        desc.append(des)
+        counter+=1
+    print('\n'.join(map(str, exp))) 
+    print('\n'.join(map(str, desc)))
+    
+# Perturb one timestep in a constant simulation in the last 4 days (ex. all night except one time step in the 7th day)
+def Constant_Cue_last4_SinglePertrubation(counter=22,day=3,morning_night='M'):
+    if morning_night not in ['M','N']:
+        raise Exception('morning_night should be either M or N ')
+    exp = []
+    desc=[]
+    counter+=1
+    start_point=((day-1)*40)-160
+    opposit = 'N'if morning_night=='M'else 'M'
+    base="{}:(\"M20,N20,M20,N20,M20,N20,M20,N20,{}{},{}1,{}{}\"),"
+    for i in range(0,40):
+        x = base.format(counter,morning_night,start_point+i,opposit,morning_night,
+                          160-(start_point+i+1))
+        des = '{}:\"last 4 days constant {} except day {} step {}\",'.format(counter,morning_night,day,i+1)
+        exp.append(x)
+        desc.append(des)
+        counter+=1
+    print('\n'.join(map(str, exp))) 
+    print('\n'.join(map(str, desc)))
 Scenarios={
     # Baseline (Random 4)
     0:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20"),
@@ -295,7 +428,169 @@ Scenarios={
     261:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N16,M20,N20,M20,N20,M20,N20,M4"),
     262:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N17,M20,N20,M20,N20,M20,N20,M3"),
     263:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N18,M20,N20,M20,N20,M20,N20,M2"),
-    264:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N19,M20,N20,M20,N20,M20,N20,M1")
+    264:("M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N20,M20,N19,M20,N20,M20,N20,M20,N20,M1"),
+    265:("M240,N1,M79"),
+266:("M241,N1,M78"),
+267:("M242,N1,M77"),
+268:("M243,N1,M76"),
+269:("M244,N1,M75"),
+270:("M245,N1,M74"),
+271:("M246,N1,M73"),
+272:("M247,N1,M72"),
+273:("M248,N1,M71"),
+274:("M249,N1,M70"),
+275:("M250,N1,M69"),
+276:("M251,N1,M68"),
+277:("M252,N1,M67"),
+278:("M253,N1,M66"),
+279:("M254,N1,M65"),
+280:("M255,N1,M64"),
+281:("M256,N1,M63"),
+282:("M257,N1,M62"),
+283:("M258,N1,M61"),
+284:("M259,N1,M60"),
+285:("M260,N1,M59"),
+286:("M261,N1,M58"),
+287:("M262,N1,M57"),
+288:("M263,N1,M56"),
+289:("M264,N1,M55"),
+290:("M265,N1,M54"),
+291:("M266,N1,M53"),
+292:("M267,N1,M52"),
+293:("M268,N1,M51"),
+294:("M269,N1,M50"),
+295:("M270,N1,M49"),
+296:("M271,N1,M48"),
+297:("M272,N1,M47"),
+298:("M273,N1,M46"),
+299:("M274,N1,M45"),
+300:("M275,N1,M44"),
+301:("M276,N1,M43"),
+302:("M277,N1,M42"),
+303:("M278,N1,M41"),
+304:("M279,N1,M40"),
+    305:("N240,M1,N79"),
+306:("N241,M1,N78"),
+307:("N242,M1,N77"),
+308:("N243,M1,N76"),
+309:("N244,M1,N75"),
+310:("N245,M1,N74"),
+311:("N246,M1,N73"),
+312:("N247,M1,N72"),
+313:("N248,M1,N71"),
+314:("N249,M1,N70"),
+315:("N250,M1,N69"),
+316:("N251,M1,N68"),
+317:("N252,M1,N67"),
+318:("N253,M1,N66"),
+319:("N254,M1,N65"),
+320:("N255,M1,N64"),
+321:("N256,M1,N63"),
+322:("N257,M1,N62"),
+323:("N258,M1,N61"),
+324:("N259,M1,N60"),
+325:("N260,M1,N59"),
+326:("N261,M1,N58"),
+327:("N262,M1,N57"),
+328:("N263,M1,N56"),
+329:("N264,M1,N55"),
+330:("N265,M1,N54"),
+331:("N266,M1,N53"),
+332:("N267,M1,N52"),
+333:("N268,M1,N51"),
+334:("N269,M1,N50"),
+335:("N270,M1,N49"),
+336:("N271,M1,N48"),
+337:("N272,M1,N47"),
+338:("N273,M1,N46"),
+339:("N274,M1,N45"),
+340:("N275,M1,N44"),
+341:("N276,M1,N43"),
+342:("N277,M1,N42"),
+343:("N278,M1,N41"),
+344:("N279,M1,N40"),
+345:("M20,N20,M20,N20,M20,N20,M20,N20,N80,M1,N79"),
+346:("M20,N20,M20,N20,M20,N20,M20,N20,N81,M1,N78"),
+347:("M20,N20,M20,N20,M20,N20,M20,N20,N82,M1,N77"),
+348:("M20,N20,M20,N20,M20,N20,M20,N20,N83,M1,N76"),
+349:("M20,N20,M20,N20,M20,N20,M20,N20,N84,M1,N75"),
+350:("M20,N20,M20,N20,M20,N20,M20,N20,N85,M1,N74"),
+351:("M20,N20,M20,N20,M20,N20,M20,N20,N86,M1,N73"),
+352:("M20,N20,M20,N20,M20,N20,M20,N20,N87,M1,N72"),
+353:("M20,N20,M20,N20,M20,N20,M20,N20,N88,M1,N71"),
+354:("M20,N20,M20,N20,M20,N20,M20,N20,N89,M1,N70"),
+355:("M20,N20,M20,N20,M20,N20,M20,N20,N90,M1,N69"),
+356:("M20,N20,M20,N20,M20,N20,M20,N20,N91,M1,N68"),
+357:("M20,N20,M20,N20,M20,N20,M20,N20,N92,M1,N67"),
+358:("M20,N20,M20,N20,M20,N20,M20,N20,N93,M1,N66"),
+359:("M20,N20,M20,N20,M20,N20,M20,N20,N94,M1,N65"),
+360:("M20,N20,M20,N20,M20,N20,M20,N20,N95,M1,N64"),
+361:("M20,N20,M20,N20,M20,N20,M20,N20,N96,M1,N63"),
+362:("M20,N20,M20,N20,M20,N20,M20,N20,N97,M1,N62"),
+363:("M20,N20,M20,N20,M20,N20,M20,N20,N98,M1,N61"),
+364:("M20,N20,M20,N20,M20,N20,M20,N20,N99,M1,N60"),
+365:("M20,N20,M20,N20,M20,N20,M20,N20,N100,M1,N59"),
+366:("M20,N20,M20,N20,M20,N20,M20,N20,N101,M1,N58"),
+367:("M20,N20,M20,N20,M20,N20,M20,N20,N102,M1,N57"),
+368:("M20,N20,M20,N20,M20,N20,M20,N20,N103,M1,N56"),
+369:("M20,N20,M20,N20,M20,N20,M20,N20,N104,M1,N55"),
+370:("M20,N20,M20,N20,M20,N20,M20,N20,N105,M1,N54"),
+371:("M20,N20,M20,N20,M20,N20,M20,N20,N106,M1,N53"),
+372:("M20,N20,M20,N20,M20,N20,M20,N20,N107,M1,N52"),
+373:("M20,N20,M20,N20,M20,N20,M20,N20,N108,M1,N51"),
+374:("M20,N20,M20,N20,M20,N20,M20,N20,N109,M1,N50"),
+375:("M20,N20,M20,N20,M20,N20,M20,N20,N110,M1,N49"),
+376:("M20,N20,M20,N20,M20,N20,M20,N20,N111,M1,N48"),
+377:("M20,N20,M20,N20,M20,N20,M20,N20,N112,M1,N47"),
+378:("M20,N20,M20,N20,M20,N20,M20,N20,N113,M1,N46"),
+379:("M20,N20,M20,N20,M20,N20,M20,N20,N114,M1,N45"),
+380:("M20,N20,M20,N20,M20,N20,M20,N20,N115,M1,N44"),
+381:("M20,N20,M20,N20,M20,N20,M20,N20,N116,M1,N43"),
+382:("M20,N20,M20,N20,M20,N20,M20,N20,N117,M1,N42"),
+383:("M20,N20,M20,N20,M20,N20,M20,N20,N118,M1,N41"),
+384:("M20,N20,M20,N20,M20,N20,M20,N20,N119,M1,N40"),
+385:("M20,N20,M20,N20,M20,N20,M20,N20,M80,N1,M79"),
+386:("M20,N20,M20,N20,M20,N20,M20,N20,M81,N1,M78"),
+387:("M20,N20,M20,N20,M20,N20,M20,N20,M82,N1,M77"),
+388:("M20,N20,M20,N20,M20,N20,M20,N20,M83,N1,M76"),
+389:("M20,N20,M20,N20,M20,N20,M20,N20,M84,N1,M75"),
+390:("M20,N20,M20,N20,M20,N20,M20,N20,M85,N1,M74"),
+391:("M20,N20,M20,N20,M20,N20,M20,N20,M86,N1,M73"),
+392:("M20,N20,M20,N20,M20,N20,M20,N20,M87,N1,M72"),
+393:("M20,N20,M20,N20,M20,N20,M20,N20,M88,N1,M71"),
+394:("M20,N20,M20,N20,M20,N20,M20,N20,M89,N1,M70"),
+395:("M20,N20,M20,N20,M20,N20,M20,N20,M90,N1,M69"),
+396:("M20,N20,M20,N20,M20,N20,M20,N20,M91,N1,M68"),
+397:("M20,N20,M20,N20,M20,N20,M20,N20,M92,N1,M67"),
+398:("M20,N20,M20,N20,M20,N20,M20,N20,M93,N1,M66"),
+399:("M20,N20,M20,N20,M20,N20,M20,N20,M94,N1,M65"),
+400:("M20,N20,M20,N20,M20,N20,M20,N20,M95,N1,M64"),
+401:("M20,N20,M20,N20,M20,N20,M20,N20,M96,N1,M63"),
+402:("M20,N20,M20,N20,M20,N20,M20,N20,M97,N1,M62"),
+403:("M20,N20,M20,N20,M20,N20,M20,N20,M98,N1,M61"),
+404:("M20,N20,M20,N20,M20,N20,M20,N20,M99,N1,M60"),
+405:("M20,N20,M20,N20,M20,N20,M20,N20,M100,N1,M59"),
+406:("M20,N20,M20,N20,M20,N20,M20,N20,M101,N1,M58"),
+407:("M20,N20,M20,N20,M20,N20,M20,N20,M102,N1,M57"),
+408:("M20,N20,M20,N20,M20,N20,M20,N20,M103,N1,M56"),
+409:("M20,N20,M20,N20,M20,N20,M20,N20,M104,N1,M55"),
+410:("M20,N20,M20,N20,M20,N20,M20,N20,M105,N1,M54"),
+411:("M20,N20,M20,N20,M20,N20,M20,N20,M106,N1,M53"),
+412:("M20,N20,M20,N20,M20,N20,M20,N20,M107,N1,M52"),
+413:("M20,N20,M20,N20,M20,N20,M20,N20,M108,N1,M51"),
+414:("M20,N20,M20,N20,M20,N20,M20,N20,M109,N1,M50"),
+415:("M20,N20,M20,N20,M20,N20,M20,N20,M110,N1,M49"),
+416:("M20,N20,M20,N20,M20,N20,M20,N20,M111,N1,M48"),
+417:("M20,N20,M20,N20,M20,N20,M20,N20,M112,N1,M47"),
+418:("M20,N20,M20,N20,M20,N20,M20,N20,M113,N1,M46"),
+419:("M20,N20,M20,N20,M20,N20,M20,N20,M114,N1,M45"),
+420:("M20,N20,M20,N20,M20,N20,M20,N20,M115,N1,M44"),
+421:("M20,N20,M20,N20,M20,N20,M20,N20,M116,N1,M43"),
+422:("M20,N20,M20,N20,M20,N20,M20,N20,M117,N1,M42"),
+423:("M20,N20,M20,N20,M20,N20,M20,N20,M118,N1,M41"),
+424:("M20,N20,M20,N20,M20,N20,M20,N20,M119,N1,M40"),
+425:("M320"),
+426:("N320")
 }
 Scenarios_desc={
     0:"Baseline (Random 4)",
@@ -562,5 +857,167 @@ Scenarios_desc={
     261:"10 days-jetlag day 7 N expand_False by -4 step ",
     262:"10 days-jetlag day 7 N expand_False by -3 step ",
     263:"10 days-jetlag day 7 N expand_False by -2 step ",
-    264:"10 days-jetlag day 7 N expand_False by -1 step "
+    264:"10 days-jetlag day 7 N expand_False by -1 step ",
+    265:"All constant M except day 7 step 1",
+266:"All constant M except day 7 step 2",
+267:"All constant M except day 7 step 3",
+268:"All constant M except day 7 step 4",
+269:"All constant M except day 7 step 5",
+270:"All constant M except day 7 step 6",
+271:"All constant M except day 7 step 7",
+272:"All constant M except day 7 step 8",
+273:"All constant M except day 7 step 9",
+274:"All constant M except day 7 step 10",
+275:"All constant M except day 7 step 11",
+276:"All constant M except day 7 step 12",
+277:"All constant M except day 7 step 13",
+278:"All constant M except day 7 step 14",
+279:"All constant M except day 7 step 15",
+280:"All constant M except day 7 step 16",
+281:"All constant M except day 7 step 17",
+282:"All constant M except day 7 step 18",
+283:"All constant M except day 7 step 19",
+284:"All constant M except day 7 step 20",
+285:"All constant M except day 7 step 21",
+286:"All constant M except day 7 step 22",
+287:"All constant M except day 7 step 23",
+288:"All constant M except day 7 step 24",
+289:"All constant M except day 7 step 25",
+290:"All constant M except day 7 step 26",
+291:"All constant M except day 7 step 27",
+292:"All constant M except day 7 step 28",
+293:"All constant M except day 7 step 29",
+294:"All constant M except day 7 step 30",
+295:"All constant M except day 7 step 31",
+296:"All constant M except day 7 step 32",
+297:"All constant M except day 7 step 33",
+298:"All constant M except day 7 step 34",
+299:"All constant M except day 7 step 35",
+300:"All constant M except day 7 step 36",
+301:"All constant M except day 7 step 37",
+302:"All constant M except day 7 step 38",
+303:"All constant M except day 7 step 39",
+304:"All constant M except day 7 step 40",
+    305:"All constant N except day 7 step 1",
+306:"All constant N except day 7 step 2",
+307:"All constant N except day 7 step 3",
+308:"All constant N except day 7 step 4",
+309:"All constant N except day 7 step 5",
+310:"All constant N except day 7 step 6",
+311:"All constant N except day 7 step 7",
+312:"All constant N except day 7 step 8",
+313:"All constant N except day 7 step 9",
+314:"All constant N except day 7 step 10",
+315:"All constant N except day 7 step 11",
+316:"All constant N except day 7 step 12",
+317:"All constant N except day 7 step 13",
+318:"All constant N except day 7 step 14",
+319:"All constant N except day 7 step 15",
+320:"All constant N except day 7 step 16",
+321:"All constant N except day 7 step 17",
+322:"All constant N except day 7 step 18",
+323:"All constant N except day 7 step 19",
+324:"All constant N except day 7 step 20",
+325:"All constant N except day 7 step 21",
+326:"All constant N except day 7 step 22",
+327:"All constant N except day 7 step 23",
+328:"All constant N except day 7 step 24",
+329:"All constant N except day 7 step 25",
+330:"All constant N except day 7 step 26",
+331:"All constant N except day 7 step 27",
+332:"All constant N except day 7 step 28",
+333:"All constant N except day 7 step 29",
+334:"All constant N except day 7 step 30",
+335:"All constant N except day 7 step 31",
+336:"All constant N except day 7 step 32",
+337:"All constant N except day 7 step 33",
+338:"All constant N except day 7 step 34",
+339:"All constant N except day 7 step 35",
+340:"All constant N except day 7 step 36",
+341:"All constant N except day 7 step 37",
+342:"All constant N except day 7 step 38",
+343:"All constant N except day 7 step 39",
+344:"All constant N except day 7 step 40",
+345:"last 4 days constant N except day 7 step 1",
+346:"last 4 days constant N except day 7 step 2",
+347:"last 4 days constant N except day 7 step 3",
+348:"last 4 days constant N except day 7 step 4",
+349:"last 4 days constant N except day 7 step 5",
+350:"last 4 days constant N except day 7 step 6",
+351:"last 4 days constant N except day 7 step 7",
+352:"last 4 days constant N except day 7 step 8",
+353:"last 4 days constant N except day 7 step 9",
+354:"last 4 days constant N except day 7 step 10",
+355:"last 4 days constant N except day 7 step 11",
+356:"last 4 days constant N except day 7 step 12",
+357:"last 4 days constant N except day 7 step 13",
+358:"last 4 days constant N except day 7 step 14",
+359:"last 4 days constant N except day 7 step 15",
+360:"last 4 days constant N except day 7 step 16",
+361:"last 4 days constant N except day 7 step 17",
+362:"last 4 days constant N except day 7 step 18",
+363:"last 4 days constant N except day 7 step 19",
+364:"last 4 days constant N except day 7 step 20",
+365:"last 4 days constant N except day 7 step 21",
+366:"last 4 days constant N except day 7 step 22",
+367:"last 4 days constant N except day 7 step 23",
+368:"last 4 days constant N except day 7 step 24",
+369:"last 4 days constant N except day 7 step 25",
+370:"last 4 days constant N except day 7 step 26",
+371:"last 4 days constant N except day 7 step 27",
+372:"last 4 days constant N except day 7 step 28",
+373:"last 4 days constant N except day 7 step 29",
+374:"last 4 days constant N except day 7 step 30",
+375:"last 4 days constant N except day 7 step 31",
+376:"last 4 days constant N except day 7 step 32",
+377:"last 4 days constant N except day 7 step 33",
+378:"last 4 days constant N except day 7 step 34",
+379:"last 4 days constant N except day 7 step 35",
+380:"last 4 days constant N except day 7 step 36",
+381:"last 4 days constant N except day 7 step 37",
+382:"last 4 days constant N except day 7 step 38",
+383:"last 4 days constant N except day 7 step 39",
+384:"last 4 days constant N except day 7 step 40",
+385:"last 4 days constant M except day 7 step 1",
+386:"last 4 days constant M except day 7 step 2",
+387:"last 4 days constant M except day 7 step 3",
+388:"last 4 days constant M except day 7 step 4",
+389:"last 4 days constant M except day 7 step 5",
+390:"last 4 days constant M except day 7 step 6",
+391:"last 4 days constant M except day 7 step 7",
+392:"last 4 days constant M except day 7 step 8",
+393:"last 4 days constant M except day 7 step 9",
+394:"last 4 days constant M except day 7 step 10",
+395:"last 4 days constant M except day 7 step 11",
+396:"last 4 days constant M except day 7 step 12",
+397:"last 4 days constant M except day 7 step 13",
+398:"last 4 days constant M except day 7 step 14",
+399:"last 4 days constant M except day 7 step 15",
+400:"last 4 days constant M except day 7 step 16",
+401:"last 4 days constant M except day 7 step 17",
+402:"last 4 days constant M except day 7 step 18",
+403:"last 4 days constant M except day 7 step 19",
+404:"last 4 days constant M except day 7 step 20",
+405:"last 4 days constant M except day 7 step 21",
+406:"last 4 days constant M except day 7 step 22",
+407:"last 4 days constant M except day 7 step 23",
+408:"last 4 days constant M except day 7 step 24",
+409:"last 4 days constant M except day 7 step 25",
+410:"last 4 days constant M except day 7 step 26",
+411:"last 4 days constant M except day 7 step 27",
+412:"last 4 days constant M except day 7 step 28",
+413:"last 4 days constant M except day 7 step 29",
+414:"last 4 days constant M except day 7 step 30",
+415:"last 4 days constant M except day 7 step 31",
+416:"last 4 days constant M except day 7 step 32",
+417:"last 4 days constant M except day 7 step 33",
+418:"last 4 days constant M except day 7 step 34",
+419:"last 4 days constant M except day 7 step 35",
+420:"last 4 days constant M except day 7 step 36",
+421:"last 4 days constant M except day 7 step 37",
+422:"last 4 days constant M except day 7 step 38",
+423:"last 4 days constant M except day 7 step 39",
+424:"last 4 days constant M except day 7 step 40",
+425:"8 days constant morning.",
+426:"8 days constant night."
 }

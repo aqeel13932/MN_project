@@ -3,6 +3,11 @@
 #06/10/2020 Added simulations for 50 days and 1 time step manipluation for 3rd day and 7th day.
 #08/10/2020 added simulations for 50 days and 1 time steo manipluation for 3rd day and 7th day for model 67.
 #09/10/2020 aaded simulations for jetlage (moving west,moving east) every time step for (3rd,7th) day for both (64,67) models.
+#02/02/2021 added simulations for models 112(small input) and 167 (full input) (lstm size 32)
+#24/05/2021 added simulations for PRC 425,426 scenarios
+#25/05/2021 added simulation to perturb one time step in the 7th day when (1)last 4 days or (2) all 8 days, are constant morning or night.
+#12/05/2021 added simulations for model 197.
+#23/05/2021 added simulations for models 198-204 for simulations from 0 to 21
 : <<'END'
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 30 --num_eps 1000 --nofood  >logs.txt &
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 39 --num_eps 1000 --nofood --clue >logs.txt &
@@ -114,7 +119,6 @@ do
 		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m $m --episode_length 400 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
 	done
 done
-END
 
 mod=(78 81)
 exp=(22 103 104)
@@ -142,5 +146,59 @@ do
 	do
 		echo $m $s
 		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record_minimized.py --train_m $m --episode_length 400 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+done
+
+
+for s in `seq 0 264`;
+do
+	echo 112 $s
+	nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record_minimized.py --train_m 112 --Scenario $s --num_eps 1000 --clue --lstm_size 32 >logs/"112_${s}.out" &
+done
+
+for s in `seq 0 264`;
+do
+	echo 167 $s
+	nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 167 --Scenario $s --num_eps 1000 --clue --lstm_size 32 >logs/"167_${s}.out" &
+done
+
+
+for j in `seq 425 426`;
+	do
+		echo $i $j
+		nohup srun --partition=amd --time=3- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 100 --clue >logs/"${i}_${j}.out" &
+	done
+
+
+for j in `seq 265 426`;
+	do
+		echo $j
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 1000 --clue >logs/64_"${j}.out" &
+	done
+for j in `seq 265 424`;
+	do
+		echo $j
+		nohup srun --partition=amd --time=3- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 64 --episode_length 320 --Scenario $j --num_eps 10 --clue >logs/"${i}_${j}.out" &
+	done
+for j in `seq 265 424`;
+	do
+		echo $j
+		nohup srun --partition=amd --time=4- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 197 --episode_length 320 --Scenario $j --num_eps 10 --clue >logs/"${i}_${j}.out" &
+	done
+
+# Test all simulation on model 197
+for s in `seq 0 426`;
+do
+	echo 167 $s
+	nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 197 --Scenario $s --num_eps 1000 --clue >logs/"197_${s}.out" &
+done
+END
+for m in `seq 198 204`;
+do
+
+	for s in `seq 0 21`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=4- --mem=5000 python dynamic_timer_mn_record.py --train_m $m --Scenario $s --num_eps 1000 --clue >logs/"{$m}_${s}.out" &
 	done
 done

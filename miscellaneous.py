@@ -7,6 +7,42 @@ from Scenarios import *
 from math import sqrt
 min_max_scaler = preprocessing.MinMaxScaler()
 from sklearn.manifold import TSNE
+from os import listdir
+from os.path import isfile, join
+
+# def Get_LSTM_Files(model,simulation):
+#     '''
+#     Return a list of progressive training models where a simulation exist.
+#     Input:
+#         - model: integer of the model, usually 64
+#         - simulation: integer of the simulation. You can find the number in Scenarios.py.
+#     output:
+#         - List of progressive lstm activation for specific simulation available.
+#     '''
+#     episode=100
+#     lstm_files = []
+#     while isfile('output/{}/PRC_data/lstm_states_{}_model_eps:{}.h5.npy'.format(model,simulation,episode)):
+#         #lstm_files.append('lstm_states_{}_model_eps:{}.h5.npy'.format(simulation,episode))
+#         lstm_files.append(episode)
+#         episode+=100
+#     return lstm_files
+
+def Get_LSTM_Files(model,simulation):
+    '''
+    Return a list of progressive training models where a simulation exist.
+    Input:
+        - model: integer of the model, usually 64
+        - simulation: integer of the simulation. You can find the number in Scenarios.py.
+    output:
+        - List of progressive lstm activation for specific simulation available.
+    '''
+    episode=100
+    lstm_files = []
+    for episode in range(0,37600):
+        if isfile('output/{}/PRC_data/lstm_states_{}_model_eps:{}.h5.npy'.format(model,simulation,episode)):
+        #lstm_files.append('lstm_states_{}_model_eps:{}.h5.npy'.format(simulation,episode))
+            lstm_files.append(episode)
+    return lstm_files
 
 def All_in_one7seeds(simulation,cycles=2,length=80,label=['','{}','',''],combined=False,condition='XF',size=(13,7),xlim=None):
     data1=[]
@@ -19,14 +55,14 @@ def All_in_one7seeds(simulation,cycles=2,length=80,label=['','{}','',''],combine
     data2 = np.array(data2)
     data1_m = data1.mean(axis=0)
     data2_m = data2.mean(axis=0)
+    
     print(data1.shape)
+    
     data1_std = data1.std(axis=0)/sqrt(data1.shape[0])
     data2_std = data2.std(axis=0)/sqrt(data2.shape[0])
-    #data1= (Get_simulations_data(model,simulation)==condition).values.sum(axis=0)
-    #data2= Get_lstm_states(model,simulation).sum(axis=(2)).mean(axis=0)
     
     t = np.arange(data1.shape[1])
-
+    
     fig, ax1 = plt.subplots(figsize=size)
 
     color = 'tab:red'
@@ -150,7 +186,7 @@ def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,co
         plt.xlim(0,data1.shape[0])
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.show()
+    #plt.show()
 
 
 
@@ -181,31 +217,73 @@ def Process_data(data,window):
         draw_data[i] = seperate_dataset(data[i*window:(i+1)*window])
     return draw_data
 
-def plotdata(data,window,i=None):
-    draw_data1 = Process_data(data[data[5]=='Test'],window)
+def plot_data_seeds(window,models=[64],wd=[0,1,2,3],c=['g','r','b','purple'],dtype='train',
+                   legend=['Reward','#Consumed food','#Steps at home during night',
+                           '#Steps at home during morning'],title=''):
+    '''
+    Plot informatoin about the trianing or testing results of the experiments.
+    Inputs: 
+        - window: the number of episodes per point.
+        - models: the models to be averaged.
+        - wd (wanted data): list of numbers for wanted data. (0:reward,1:Consumed food,2:steps at home during night,3:steps at home during morning
+        - c: color of each data line.
+        - dtype: "train" or "Test" based on wanted data query.
+        - legend: data legend.
+        - title: plot title.
+    output:
+        - final: the processed data.
+    '''
+    for idx,m in enumerate(models):
+        #print('Read model {}'.format(m))
+        data = pd.read_csv('output/{}/exp_details.csv'.format(m),header=None)
+        if idx==0:
+            tmp = Process_data(data[data[5]==dtype],window)
+            final=np.zeros((len(models),tmp.shape[0],4))
+            final[idx] = tmp
+            continue
+            assert False
+            
+        final[idx] = Process_data(data[data[5]==dtype],window)
+    mn = final.mean(axis=0)
+    std = final.std(axis=0)#/np.sqrt(final.shape[0])
     
-    plt.figure(figsize=(12,6))
-    plt.plot(draw_data1[:,0],c='green',label='Average reward')
-    plt.plot(draw_data1[:,1],c='red',label='Average eaten food')
-    plt.plot(draw_data1[:,2],c='blue',label='Stps Hom N')
-    plt.plot(draw_data1[:,3],c='purple',label='Stps Hom M')
-    plt.xlabel('Sum of {} episode'.format(window))
-    plt.ylabel('Count')
-    plt.title('Over Testing Episodes,Model:{}'.format(i))
-    plt.legend()
-    
-    draw_data = Process_data(data[data[5]=='train'],window)
-    plt.figure(figsize=(12,6))
-    plt.plot(draw_data[:,0],c='green',label='Average reward')
-    plt.plot(draw_data[:,1],c='red',label='Average eaten food')
-    plt.plot(draw_data[:,2],c='blue',label='Stps Hom N')
-    plt.plot(draw_data[:,3],c='purple',label='Stps Hom M')
-    plt.xlabel('Sum of {} episode'.format(window))
-    plt.ylabel('Count')
-    plt.title('Over training Episodes, Model:{}'.format(i))
-    plt.legend()
-    #draw_data(data[data[5]=='train'],window)
-    return draw_data,draw_data1
+    plt.figure(figsize=(13,5))
+    ax = plt.subplot(1,1,1)
+    xvalues = np.arange(0,mn.shape[0])
+    for i in wd:
+        ax.plot(xvalues,mn[:,i],color=c[i],label=legend[i])
+        ax.fill_between(xvalues,mn[:,i]+std[:,i],mn[:,i]-std[:,i],color=c[i],alpha=0.2,
+                       label=legend[i]+' std')
+    plt.title(title)
+    plt.legend(loc=4)
+    return final
+
+def plotdata(data,window,i=None,Test=True,Train=True):
+    if Test:
+        draw_data1 = Process_data(data[data[5]=='Test'],window)
+
+        plt.figure(figsize=(12,6))
+        plt.plot(draw_data1[:,0],c='green',label='Average reward')
+        plt.plot(draw_data1[:,1],c='red',label='Average eaten food')
+        plt.plot(draw_data1[:,2],c='blue',label='Stps Hom N')
+        plt.plot(draw_data1[:,3],c='purple',label='Stps Hom M')
+        plt.xlabel('Sum of {} episode'.format(window))
+        plt.ylabel('Count')
+        plt.title('Over Testing Episodes,Model:{}'.format(i))
+        plt.legend()
+    if Train:
+        draw_data = Process_data(data[data[5]=='train'],window)
+        plt.figure(figsize=(12,6))
+        plt.plot(draw_data[:,0],c='green',label='Average reward')
+        plt.plot(draw_data[:,1],c='red',label='Average eaten food')
+        plt.plot(draw_data[:,2],c='blue',label='Stps Hom N')
+        plt.plot(draw_data[:,3],c='purple',label='Stps Hom M')
+        plt.xlabel('Sum of {} episode'.format(window))
+        plt.ylabel('Count')
+        plt.title('Over training Episodes, Model:{}'.format(i))
+        plt.legend()
+        #draw_data(data[data[5]=='train'],window)
+    #return draw_data,draw_data1
 
 
     
