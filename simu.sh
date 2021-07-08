@@ -104,7 +104,6 @@ do
 	done
 done
 
-END
 
 mod=(64 67)
 for m in ${mod[@]};
@@ -113,5 +112,35 @@ do
 	do
 		echo $m $s
 		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m $m --episode_length 400 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+done
+END
+
+mod=(78 81)
+exp=(22 103 104)
+for m in ${mod[@]};
+do
+	for s in `seq 0 21`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record_minimized.py --train_m $m --episode_length 320 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+
+	for s in `seq 23 102`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record_minimized.py --train_m $m --episode_length 320 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+
+	for s in ${exp[@]};
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=15000 python dynamic_timer_mn_record_minimized.py --train_m $m --episode_length 2000 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
+	done
+
+	for s in `seq 105 264`;
+	do
+		echo $m $s
+		nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record_minimized.py --train_m $m --episode_length 400 --Scenario $s --num_eps 1000 --clue >logs/"${m}_${s}.out" &
 	done
 done
