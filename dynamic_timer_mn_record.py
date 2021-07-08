@@ -19,6 +19,7 @@ parser.add_argument('--clue',action='store_true')
 parser.add_argument('--nofood', action='store_true')
 parser.add_argument('--render', action='store_true')
 parser.add_argument('--Scenario',type=int,default=0 ,help='Between 0-19. Check Scenarios.py for more information.')
+parser.add_argument('--lstm_size',type=int,default=128)
 args = parser.parse_args()
 import numpy as np
 import skvideo.io
@@ -170,14 +171,14 @@ def createLayers(insize,in_conv,naction):
     h = merge([con_process,x],mode="concat")
     h = TimeDistributed(Dense(32, activation='tanh'))(h)
     h = TimeDistributed(Dense(32, activation='tanh'))(h)
-    h = LSTM(128,return_sequences=True,stateful=True)(h)
+    h = LSTM(args.lstm_size,return_sequences=True,stateful=True)(h)
     y = TimeDistributed(Dense(naction + 1))(h)
     z = TimeDistributed(Lambda(lambda a: K.expand_dims(a[:,0], axis=-1) + a[:,1:] - K.max(a[:, 1:], keepdims=True), output_shape=(naction,)))(y)
     return c,x, z
 
 
 def TryModel(model,game):
-    global AIAgent,TestingCounter
+    global AIAgent,TestingCounter,manipulation
     TestingCounter+=1
     if args.render:
         writer = skvideo.io.FFmpegWriter("{}/{}/VID/{}_Test.avi".format(EF,args.train_m,TestingCounter))
@@ -189,7 +190,7 @@ def TryModel(model,game):
     Start = time()
     episode_reward=0
     cnn,rest = AIAgent.Convlutional_output()
-    day = False
+    day = bool(int(manipulation[0]))
     if args.clue:
         rest = np.concatenate([rest,[not day]])
     all_activity=[]
@@ -201,7 +202,7 @@ def TryModel(model,game):
     night_home=0
     prev_home=True
     prev_field=False
-    lstm_episode_data = np.zeros((args.episode_length,128))
+    lstm_episode_data = np.zeros((args.episode_length,args.lstm_size))
     episode_reward=np.zeros(args.episode_length)
     for t in range(args.episode_length):
         day = bool(int(manipulation[t]))
@@ -262,6 +263,10 @@ def TryModel(model,game):
 #The folder name were we created subfolder to store each experiments.  
 EF = 'output'
 data = {}
+manipulation = Construct_Scenario(Scenarios[args.Scenario])
+print(manipulation)
+args.episode_length = len(manipulation)
+
 for i in range(args.episode_length):
     data[i]=[]
 # Convert the Scenario number to specific morning/night patteren.
@@ -294,7 +299,7 @@ else:
     model = Model(inputs=X.inputs,outputs=[X.get_layer(index=9).output,X.get_layer(index=7).output])
 
 fs = (Settings.WorldSize[0]*Settings.BlockSize[0],Settings.WorldSize[1]*Settings.BlockSize[1])
-lstm_data = np.zeros((args.num_eps,args.episode_length,128))
+lstm_data = np.zeros((args.num_eps,args.episode_length,args.lstm_size))
 episodes_rewards= np.zeros((args.num_eps,args.episode_length))
 for i in range(args.num_eps):
     ate,sptime,lstm_data[i],episodes_rewards[i] = TryModel(model,game)
