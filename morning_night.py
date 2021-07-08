@@ -27,6 +27,7 @@ parser.add_argument('--svision',type=int,default=360)
 parser.add_argument('--details',type=str,default='')
 parser.add_argument('--train_m',type=str,default='')
 parser.add_argument('--naction',type=int,default=0)
+parser.add_argument('--lstm_size',type=int,default=128)
 parser.add_argument('--night_length',type=int,default=20)
 parser.add_argument('--clue', action='store_true')
 parser.add_argument('--nofood', action='store_true')
@@ -68,6 +69,7 @@ def GenerateSettingsLine():
     line.append(args.seed)
     line.append(args.rwrdschem)
     line.append(args.svision)
+    line.append(args.lstm_size)
     line.append("\""+args.details+"\"")
     return ','.join([str(x) for x in line])
 
@@ -199,7 +201,7 @@ def createLayers(insize,in_conv,naction):
     h = TimeDistributed(Dense(args.hidden_size, activation=args.activation))(h)
     if args.batch_norm and i != args.layers - 1:
         h = BatchNormalization(axis=1)(h)
-    h = LSTM(128,return_sequences=True,stateful=False)(h)
+    h = LSTM(args.lstm_size,return_sequences=True,stateful=False)(h)
     y = TimeDistributed(Dense(naction + 1))(h)
     if args.advantage == 'avg':
       z = TimeDistributed(Lambda(lambda a: K.expand_dims(a[:,0], axis=-1) + a[:,1:] - K.mean(a[:, 1:], keepdims=True), output_shape=(naction,)))(y)
@@ -333,7 +335,7 @@ worldsize*(Agents count +3(food,observed,obstacles)) + Agents count *4 (orintati
 '''
 game.GenerateWorld()
 game.Step()
-conv_size=(args.max_timesteps,Settings.WorldSize[0],Settings.WorldSize[1],2,)
+conv_size=(args.max_timesteps,Settings.WorldSize[0],Settings.WorldSize[1],4,)
 naction =  Settings.PossibleActions.shape[0]
 if args.clue:
     rest_size=(args.max_timesteps,args.naction*5+5,)
@@ -459,7 +461,7 @@ while progress<args.totalsteps:
     if i_episode%10==0:
         TryModel(model,game)
         print("Average reward per episode {}".format(total_reward /i_episode))
-    if i_episode%100==0:
+    if ((args.batch_size*2)<i_episode<400) or i_episode%100==0:
         model.save('{}/{}/MOD/model_eps:{}.h5'.format(EF,File_Signature,i_episode))
 model.save('{}/{}/MOD/model.h5'.format(EF,File_Signature))
 target_model.save('{}/{}/MOD/target_model.h5'.format(EF,File_Signature))
