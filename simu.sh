@@ -1,4 +1,4 @@
-#22/04/2020 Added simulations for jetlag, first day disturbtion, random start of day.(1000 episode each)
+#2/04/2020 Added simulations for jetlag, first day disturbtion, random start of day.(1000 episode each)
 #12/06/2020 Added simulations for PRC 
 #06/10/2020 Added simulations for 50 days and 1 time step manipluation for 3rd day and 7th day.
 #08/10/2020 added simulations for 50 days and 1 time steo manipluation for 3rd day and 7th day for model 67.
@@ -8,6 +8,8 @@
 #25/05/2021 added simulation to perturb one time step in the 7th day when (1)last 4 days or (2) all 8 days, are constant morning or night.
 #12/05/2021 added simulations for model 197.
 #23/05/2021 added simulations for models 198-204 for simulations from 0 to 21
+#04/01/2022 added simulation for model 202 for simulations 427-506
+#011/01/2022 simulations with 100 identical environments for model 202 
 : <<'END'
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 30 --num_eps 1000 --nofood  >logs.txt &
 #nohup srun --partition=main --time=1- --mem=6000 python mn_record.py --train_m 39 --num_eps 1000 --nofood --clue >logs.txt &
@@ -186,13 +188,12 @@ for j in `seq 265 424`;
 		nohup srun --partition=amd --time=4- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 197 --episode_length 320 --Scenario $j --num_eps 10 --clue >logs/"${i}_${j}.out" &
 	done
 
-# Test all simulation on model 197
+# Test all simulati n on model 197
 for s in `seq 0 426`;
 do
 	echo 167 $s
 	nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 197 --Scenario $s --num_eps 1000 --clue >logs/"197_${s}.out" &
 done
-END
 for m in `seq 198 204`;
 do
 
@@ -201,4 +202,57 @@ do
 		echo $m $s
 		nohup srun --partition=main --time=4- --mem=5000 python dynamic_timer_mn_record.py --train_m $m --Scenario $s --num_eps 1000 --clue >logs/"{$m}_${s}.out" &
 	done
+done
+
+nohup srun --partition=main --time=8- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 202 --episode_length 320 --Scenario 0 --num_eps 100 --clue >logs/"${i}_${j}.out" &
+
+# Test all simulati n on model 197
+for s in `seq 0 426`;
+do
+	echo 167 $s
+	nohup srun --partition=main --time=3- --mem=5000 python dynamic_timer_mn_record.py --train_m 205 --Scenario $s --num_eps 1000 --clue >logs/"205_${s}.out" &
+done
+
+for j in `seq 265 426`;
+	do
+		echo $j
+		nohup srun --partition=main --time=8- --mem=20000 python PRC_dynamic_timer_mn_record.py --train_m 202 --episode_length 320 --Scenario $j --num_eps 10 --clue >logs/"202_${j}.out" &
+	done
+
+# Test all simulati n on model 202
+for s in `seq 0 426`;
+do
+	echo 202 $s
+	nohup srun --partition=main --time=5- --mem=5000 python dynamic_timer_mn_record.py --train_m 202 --Scenario $s --num_eps 1000 --clue >logs/"202_${s}.out" &
+done
+# Test all simulati n on model 202 with static environment for all parts.
+for s in `seq 0 426`;
+do
+	echo 202 $s
+	nohup srun --partition=main --time=5- --mem=5000 python dynamic_timer_mn_record_statis.py --train_m 202 --Scenario $s --num_eps 10 --clue >logs/"202_static_${s}.out" &
+done
+# Test all simulati n on model 202 with static environment for all parts.
+for s in `seq 427 506`;
+do
+	echo 202 $s
+	nohup srun --partition=amd --time=5- --mem=5000 python dynamic_timer_mn_record_statis.py --train_m 202 --Scenario $s --num_eps 10 --clue >logs/"202_static_${s}.out" &
+done
+# Test all simulati n on model 202 with static environment for all parts.
+for s in `seq 0 506`;
+do
+	echo 202 $s
+	nohup srun --partition=amd --time=5- --mem=5000 python dynamic_timer_mn_record_statis.py --train_m 202 --Scenario $s --num_eps 100 --clue >logs/"202_static_${s}.out" &
+done
+END
+
+# Test all simulati n on model 202 with static environment for all parts.
+for s in `seq 0 586`;
+do
+	echo 64 $s
+	nohup srun --partition=main --time=5- --mem=5000 python dynamic_timer_mn_record_statis.py --train_m 64 --Scenario $s --num_eps 200 --clue >logs/"64_static_${s}.out" &
+done
+for s in `seq 0 586`;
+do
+	echo 202 $s
+	nohup srun --partition=main --time=5- --mem=5000 python dynamic_timer_mn_record_statis.py --train_m 202 --Scenario $s --num_eps 200 --clue >logs/"202_static_${s}.out" &
 done

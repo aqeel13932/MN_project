@@ -33,7 +33,11 @@ parser.add_argument('--clue', action='store_true')
 parser.add_argument('--nofood', action='store_true')
 args = parser.parse_args()
 import numpy as np
+import tensorflow as tf
+import random as python_random
 np.random.seed(args.seed)
+python_random.seed(args.seed)
+tf.set_random_seed(args.seed)
 import skvideo.io
 from keras.models import Model,load_model
 from keras.layers import Input, Dense, Lambda,LSTM,TimeDistributed,convolutional,Flatten,merge
@@ -463,6 +467,8 @@ while progress<args.totalsteps:
         print("Average reward per episode {}".format(total_reward /i_episode))
     if ((args.batch_size*2)<i_episode<400) or i_episode%100==0:
         model.save('{}/{}/MOD/model_eps:{}.h5'.format(EF,File_Signature,i_episode))
+        print('only one model was saved')
+        exit()
 model.save('{}/{}/MOD/model.h5'.format(EF,File_Signature))
 target_model.save('{}/{}/MOD/target_model.h5'.format(EF,File_Signature))
 TryModel(model,game)

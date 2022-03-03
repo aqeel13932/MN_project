@@ -7,6 +7,7 @@
     # Updated the code, so the episode will laste for 320 timesteps instead of 160.
 import argparse
 from Scenarios import Construct_Scenario,Scenarios,Scenarios_desc
+from miscellaneous import *
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_eps', type=int, default=1000)
 parser.add_argument('--episode_length', type=int, default=320)# 1000 
@@ -296,8 +297,18 @@ def Get_availablemodels(model):
     for i in onlyfiles:
         if i.find('model_eps')==0:
             wanted_models.append(i)
+            
+    mod = []
+    for m in wanted_models:
+            mod.append(int(m[10:-3]))
+    lstms = Get_LSTM_Files(model,args.Scenario)
 
-    return wanted_models
+    for lstm in lstms:
+        mod.remove(lstm)
+    mod = sorted(mod)
+    mod = ['model_eps:' + str(sub) for sub in mod]
+    mod = [sub + '.h5' for sub in mod]
+    return mod
 
 if args.train_m=='':
     print('train_m is required')
@@ -307,6 +318,7 @@ if not os.path.exists('{}/{}/PRC_data'.format(EF,args.train_m)):
         os.makedirs('{}/{}/PRC_data'.format(EF,args.train_m))
 
 wanted_models = Get_availablemodels(args.train_m)
+
 for wm in wanted_models:
     TestingCounter=0
     #Prepare dataset container.

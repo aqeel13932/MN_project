@@ -7,6 +7,7 @@ from Scenarios import *
 from math import sqrt
 min_max_scaler = preprocessing.MinMaxScaler()
 from sklearn.manifold import TSNE
+from sklearn.preprocessing import scale
 from os import listdir
 from os.path import isfile, join
 
@@ -27,6 +28,22 @@ from os.path import isfile, join
 #         episode+=100
 #     return lstm_files
 
+def TSNE_scaled(model,simulation,ranges=[1]):
+    '''
+    Function to scale activations of the LSTM activation for specific model,simulation and preplixety.
+    - Model: integer that specify the model.
+    - simulation: integer that specify the simulation.
+    - Range: a list of integers that will determine the perplixty (each number will be multipled with 5)
+    '''
+    
+    x = Get_lstm_states(model,simulation)
+    #transpose
+    x_m = x.mean(axis=0).T
+    ## Mean 0,std 1
+    x_scaled = scale(x_m,axis=1)
+    print(x.shape,x_m.shape,x_scaled.shape)
+    Calculate_TSNE(x_scaled,ranges=ranges) 
+    
 def Get_LSTM_Files(model,simulation):
     '''
     Return a list of progressive training models where a simulation exist.
@@ -118,12 +135,13 @@ def All_in_one7seeds(simulation,cycles=2,length=80,label=['','{}','',''],combine
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.show()
     
-def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,condition='XF',size=(13,7),xlim=None):
+def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,condition='XF',size=(13,7),xlim=None,specific_model=''):
 
     # Create some mock data
-    data1= (Get_simulations_data(model,simulation)==condition).values.sum(axis=0)
-    data2= Get_lstm_states(model,simulation).sum(axis=(2)).mean(axis=0)
-    data3= Get_rewards_data(model,simulation)
+    data1= (Get_simulations_data(model,simulation,specific_model)==condition).values.sum(axis=0)
+    data2= Get_lstm_states(model,simulation,specific_model).sum(axis=(2)).mean(axis=0)
+    data3= Get_rewards_data(model,simulation,specific_model)
+
  
     all_average = data3.sum(axis=1).mean()
     first4days = data3[:,:160].sum(axis=1).mean()
@@ -284,10 +302,9 @@ def plotdata(data,window,i=None,Test=True,Train=True):
         plt.legend()
         #draw_data(data[data[5]=='train'],window)
     #return draw_data,draw_data1
-
-
     
 def Calculate_TSNE(data,seed=10,n_comp=2,counter=80,ranges=[0,1,2,3,4,5,6,7,8,9]):
+
     for j in ranges:
         y = TSNE(n_components=n_comp, perplexity=j*5,random_state=seed).fit_transform(data)
         #print(y.shape)
@@ -306,7 +323,7 @@ def Calculate_TSNE(data,seed=10,n_comp=2,counter=80,ranges=[0,1,2,3,4,5,6,7,8,9]
         #plt.xlim(-3,-2)
         #plt.show()
         
-def Plot_neurons_activations(neurons,plot_neurons=[0,1,2],merge=False):
+def Plot_neurons_activations(model,simulation,plot_neurons=[0,1,2],merge=False):
     """
     plot specific neurons activations using a provided data set. The function will draw 2x * plots
     each represent a neuron.
@@ -315,6 +332,8 @@ def Plot_neurons_activations(neurons,plot_neurons=[0,1,2],merge=False):
         plot_neurons: a list of neurons to be plotted between [0,127]
         merge: draw all activations on same plot. Default: false.
     """
+    neurons = Get_lstm_states(model,simulation)
+    neurons = neurons.mean(axis=(0))
     if merge:
         plt.figure(figsize=(13,7))
         for i in plot_neurons:
@@ -335,14 +354,20 @@ def Plot_neurons_activations(neurons,plot_neurons=[0,1,2],merge=False):
         ax.set_title(i)
     plt.tight_layout()
     
-def Get_simulations_data(model,simulation):
-    return pd.read_csv('output/{}/states_{}.csv'.format(model,simulation),header=None)
+def Get_simulations_data(model,simulation,model_ver='',static=False):
+    if static:
+        return np.load('output/{}/static/states{}_{}_static.csv'.format(model,model_ver,simulation))
+    return pd.read_csv('output/{}/states{}_{}.csv'.format(model,model_ver,simulation),header=None)
 
-def Get_rewards_data(model,simulation):
-    return np.load('output/{}/rewards_{}.npy'.format(model,simulation))
+def Get_rewards_data(model,simulation,model_ver='',static=False):
+    if static:
+        return np.load('output/{}/static/rewards{}_{}_static.npy'.format(model,model_ver,simulation))
+    return np.load('output/{}/rewards{}_{}.npy'.format(model,model_ver,simulation))
 
-def Get_lstm_states(model,simulation):
-    return np.load('output/{}/lstm_states_{}.npy'.format(model,simulation))
+def Get_lstm_states(model,simulation,model_ver='',static=False):
+    if static:
+        return np.load('output/{}/static/lstm_states{}_{}_static.npy'.format(model,model_ver,simulation))
+    return np.load('output/{}/lstm_states{}_{}.npy'.format(model,model_ver,simulation))
 
 def Baseline_shadow(figsize=(13,7)):
     sim = Construct_Scenario(Scenarios[0])
@@ -370,7 +395,10 @@ def Baseline_shadow(figsize=(13,7)):
         plt.axvspan(start,end,color='black',alpha=0.1)
         count=0
         
-def neuron_activity(model,simulation,cycles=2,day_duration=40,figsize=(13,7),label='',shadow=False):
+def neuron_activity(model,simulation,figsize=(13,7),label='',shadow=False):
+    """
+    Plot the average neuron activity for specific model,simulation.
+    """
     data = Get_lstm_states(model,simulation).sum(axis=(2)).mean(axis=0)
     #plt.figure(figsize=figsize)
 
@@ -406,14 +434,15 @@ def neuron_activity(model,simulation,cycles=2,day_duration=40,figsize=(13,7),lab
         plt.axvspan(start,end,color='black',alpha=0.1)
         count=0
         
-def rose_plot(model,simulation,cycles=2,combined=False,length=80):
+def rose_plot(model,simulation,cycles=2,combined=False):
+    sim = Construct_Scenario(Scenarios[simulation])
+    length=len(sim)
     x= Get_simulations_data(model,simulation)
-    print('Model:{}'.format(model))
+    print('Model:{} simulation:{}'.format(model,Scenarios_desc[simulation]))
     XH = (x=='XH').values.sum(axis=0)
     EH = (x=='EH').values.sum(axis=0)
     XF = (x=='XF').values.sum(axis=0)
     EF = (x=='EF').values.sum(axis=0)
-    sim = str(simulation)
 
     rose_neurons={'Exit Home':XH,'Enter Home':EH,'Exit Food':XF,'Enter Food Area':EF}
     plt.rcParams['figure.figsize'] = (8, 8)
@@ -450,15 +479,19 @@ def rose_plot(model,simulation,cycles=2,combined=False,length=80):
         counter+=1
 
         if not combined:
-            step= 360/len(sim)
-            #Set the center of the span to mark as night.
-            start=step/2
-            for mn in range(len(sim)):
-                if sim[mn]=='0':
-                    ax.bar(np.deg2rad(start),max(rose_neurons[j]),width=np.deg2rad(step),facecolor='black',alpha=0.1)
-                start=start+step    
+            Rose_plot_shadow(ax,rose_neurons[j],sim)   
     plt.tight_layout()
-    
+
+def Rose_plot_shadow(ax,r_n,sim):
+    length=len(r_n)
+    step= 360/length#len(sim)
+    #Set the center of the span to mark as night.
+    start=step/2
+    for mn in range(length):#len(sim)):
+        if sim[mn]=='0':
+            ax.bar(np.deg2rad(start),max(r_n),width=np.deg2rad(step),facecolor='black',alpha=0.1)
+        start=start+step
+        
 def rose_plot_compare(model,simulations,cycles=2,combined=False,length=80,condition='EH',names=None):
     rose_neurons={}
     for i in simulations:
@@ -478,7 +511,6 @@ def rose_plot_compare(model,simulations,cycles=2,combined=False,length=80,condit
     n_bins = [i*(360/n_bins) for i in range(bins)]
     n_nights = 2 if combined else cycles*2
     
-    
     #Loop over the picked neurons
     for j in rose_neurons.keys():
         #Making the plot polar.
@@ -489,17 +521,8 @@ def rose_plot_compare(model,simulations,cycles=2,combined=False,length=80,condit
         if combined:
             tick = length/(cycles*8)
         else:
+            Rose_plot_shadow(ax,rose_neurons[j],Construct_Scenario(Scenarios[j]))
             tick = length/8
-            sim=str(j)
-            step= 360/len(sim)
-            #Set the center of the span to mark as night.
-            start=step/2
-            
-            for mn in range(len(sim)):
-                if sim[mn]=='0':
-                    ax.bar(np.deg2rad(start),max(rose_neurons[j]),width=np.deg2rad(step),facecolor='black',alpha=0.1)
-                start=start+step 
-            
             
         ax.set_xticklabels([0,tick,names[j],tick*3,tick*4,tick*5,tick*6,tick*7])
         ax.set_title('{}'.format(j),pad=15)

@@ -1,3 +1,4 @@
+#PLEASE REVERESE THIS BEFORE RUNNING ANY MORE CODE
 #In this file:
     # Food spawn in top left 5X5 square.
     # Agent spawn in bottom right square.
@@ -5,6 +6,9 @@
     # mainpulation work for half a day  so instea of 8 values we have 16 values so 4 values per day that determine if its a day or night.
 # Updated: 25-03-2020:
     # Updated the code, so the episode will laste for 320 timesteps instead of 160.
+# Temprorary update: 31/10/2021
+    # Changed the model from mode.h5 to model_10000.h5 to generate simulation for that model. PLEASE
+    #PLEASE REVERESE THIS BEFORE RUNNING ANY MORE CODE
 import argparse
 from Scenarios import Construct_Scenario,Scenarios,Scenarios_desc
 parser = argparse.ArgumentParser()
@@ -288,7 +292,8 @@ if args.train_m=='':
     print('train_m is required')
     exit()
 else:
-    X = load_model('{}/{}/MOD/model.h5'.format(EF,args.train_m))
+        
+    X = load_model('{}/{}/MOD/model_eps:10000.h5'.format(EF,args.train_m))
     model = Model(inputs=X.inputs,outputs=[X.get_layer(index=9).output,X.get_layer(index=7).output])
     #We need to specifiy the batch size 
     c,x,z = createLayers((1,None,5),(1,None, 5, 5, 4), Settings.PossibleActions.shape[0])
@@ -307,6 +312,6 @@ for i in range(args.num_eps):
     model.reset_states()
 
 df= pd.DataFrame(data=data)
-df.to_csv('{}/{}/states_{}.csv'.format(EF,args.train_m,args.Scenario),index=False)
-np.save('{}/{}/lstm_states_{}'.format(EF,args.train_m,args.Scenario),lstm_data)
-np.save('{}/{}/rewards_{}'.format(EF,args.train_m,args.Scenario),episodes_rewards)
+df.to_csv('{}/{}/statesm10000_{}.csv'.format(EF,args.train_m,args.Scenario),index=False)
+np.save('{}/{}/lstm_statesm10000_{}'.format(EF,args.train_m,args.Scenario),lstm_data)
+np.save('{}/{}/rewardm10000_{}'.format(EF,args.train_m,args.Scenario),episodes_rewards)
