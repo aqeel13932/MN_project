@@ -314,8 +314,8 @@ if args.train_m=='':
     print('train_m is required')
     exit()
 #Create a folder to save all the results.
-if not os.path.exists('{}/{}/PRC_data'.format(EF,args.train_m)):
-        os.makedirs('{}/{}/PRC_data'.format(EF,args.train_m))
+if not os.path.exists('{}/{}/bif_data'.format(EF,args.train_m)):
+        os.makedirs('{}/{}/bif_data'.format(EF,args.train_m))
 
 wanted_models = Get_availablemodels(args.train_m)
 
@@ -335,6 +335,6 @@ for wm in wanted_models:
         model.reset_states()
 
     df= pd.DataFrame(data=data)
-    df.to_csv('{}/{}/PRC_data/states_{}_{}.csv'.format(EF,args.train_m,args.Scenario,wm),index=False)
-    np.save('{}/{}/PRC_data/lstm_states_{}_{}'.format(EF,args.train_m,args.Scenario,wm),lstm_data)
-    np.save('{}/{}/PRC_data/rewards_{}_{}'.format(EF,args.train_m,args.Scenario,wm),episodes_rewards)
+    df.to_csv('{}/{}/bif_data/states_{}_{}.csv'.format(EF,args.train_m,args.Scenario,wm),index=False)
+    np.save('{}/{}/bif_data/lstm_states_{}_{}'.format(EF,args.train_m,args.Scenario,wm),lstm_data)
+    np.save('{}/{}/bif_data/rewards_{}_{}'.format(EF,args.train_m,args.Scenario,wm),episodes_rewards)
