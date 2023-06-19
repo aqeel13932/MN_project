@@ -750,7 +750,11 @@ Scenarios={
 583:("M20,N20,M20,N20,M20,N20,M20,N16,M1,N3,N160"),
 584:("M20,N20,M20,N20,M20,N20,M20,N17,M1,N2,N160"),
 585:("M20,N20,M20,N20,M20,N20,M20,N18,M1,N1,N160"),
-586:("M20,N20,M20,N20,M20,N20,M20,N19,N161")
+586:("M20,N20,M20,N20,M20,N20,M20,N19,N161"),
+587:("M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23,M23,N23"),
+588:("M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17,M17,N17"),
+589:("M17,N23,M17,N23,M17,N23,M17,N23,M17,N23,M17,N23,M17,N23,M17,N23"),
+590:("M23,N17,M23,N17,M23,N17,M23,N17,M23,N17,M23,N17,M23,N17,M23,N17")
 }
 Scenarios_desc={
     0:"Baseline (Random 4)",
@@ -772,7 +776,7 @@ Scenarios_desc={
     16:"All mornings 20% more",
     17:"All nights 20% more",
     18:"longer day (46 instead of 40)",
-    19:"shorter day (17 instead of 40)",
+    19:"shorter day (34 instead of 40)",
     20:"Last 4 days permenant night",
     21:"Last 4 days permenant mornings",
     22:"50 days experiment",
@@ -1339,5 +1343,9 @@ Scenarios_desc={
 583:"reverse day 4 N step 17 last 4 days constant night",
 584:"reverse day 4 N step 18 last 4 days constant night",
 585:"reverse day 4 N step 19 last 4 days constant night",
-586:"reverse day 4 N step 20 last 4 days constant night"
+586:"reverse day 4 N step 20 last 4 days constant night",
+587:"15 days, each day with 46 time steps (23 day, 23 night",
+588:"15 days, each day with 34 time steps (17 day, 17 night)",
+589:"Morning 17, night 23 time steps",
+590:"Morning 23, night 17 time steps"
 }
