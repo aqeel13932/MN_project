@@ -1,36 +1,39 @@
-#In this file:
-    # Food spawn in top left 5X5 square.
-    # Agent spawn in bottom right square.
+# Training file. 
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filesignature',type=int)
-parser.add_argument('--batch_size', type=int, default=16)#100 ( 100, 16,32,64,128) priority 3
-parser.add_argument('--seed',type=int,default=1337)#4(CH)9(JAP)17(ITAL)
-parser.add_argument('--hidden_size', type=int, default=32)#priority 2
-parser.add_argument('--batch_norm', action="store_true", default=False)#priority 5 , keep turned off
+parser.add_argument('filesignature',type=int,help="Interger represent the model identity")
+parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--seed',type=int,default=1337)
+parser.add_argument('--hidden_size', type=int, default=32,help="FC layer hidden size" )
+parser.add_argument('--batch_norm', action="store_true", default=False)
 parser.add_argument('--no_batch_norm', action="store_false", dest='batch_norm')
-parser.add_argument('--replay_size', type=int, default=1000)# try increasing later  , priority 3.1
-parser.add_argument('--train_repeat', type=int, default=4)#(2^2) , priority 1
-parser.add_argument('--gamma', type=float, default=0.99)# (calculated should be 0.99) (0.99)
-parser.add_argument('--tau', type=float, default=0.001)# priority 0.9 (0.001 , 0.01 , 0.1) the one that work expeirment in the domain.
-parser.add_argument('--totalsteps', type=int, default=1000000)# much more ( 1000 -> 10,000) (should be around 1 million steps)
-parser.add_argument('--max_timesteps', type=int, default=80)# 1000 
-parser.add_argument('--activation', choices=['tanh', 'relu'], default='relu')# experiment ( relu , tanh) priority 0.7
-parser.add_argument('--optimizer', choices=['adam', 'rmsprop'], default='adam')# priority 4.9
-parser.add_argument('--optimizer_lr', type=float, default=0.001)#could be used later priority 4.5
-parser.add_argument('--exploration', type=float, default=0.1)# priority (0.8) it should decrease over time to reach 0.001 or even 0
-parser.add_argument('--vanish',type=float,default=0.75)#Decide when the exploration should stop in percentage (75%)
-parser.add_argument('--advantage', choices=['naive', 'max', 'avg'], default='avg')# priority 2 maybe done once and stike with one 
-parser.add_argument('--rwrdschem',nargs='+',default=[0,1,-1.5],type=float) #(calculated should be (1000 reward , -0.1 punish per step)
+parser.add_argument('--replay_size', type=int, default=1000)
+parser.add_argument('--train_repeat', type=int, default=4)
+parser.add_argument('--gamma', type=float, default=0.99)
+parser.add_argument('--tau', type=float, default=0.001)
+parser.add_argument('--totalsteps', type=int, default=1000000)
+parser.add_argument('--max_timesteps', type=int, default=80)
+parser.add_argument('--activation', choices=['tanh', 'relu'], default='relu')
+parser.add_argument('--optimizer', choices=['adam', 'rmsprop','sgd'], default='adam')
+parser.add_argument('--optimizer_lr', type=float, default=0.001)
+parser.add_argument('--exploration', type=float, default=0.1)
+parser.add_argument('--exploration_platue', type=float, default=0.1)
+parser.add_argument('--vanish',type=float,default=0.75)
+parser.add_argument('--advantage', choices=['naive', 'max', 'avg'], default='avg')
+parser.add_argument('--rwrdschem',nargs='+',default=[0,1,-2.5],type=float,help="Reward scheme [,eating food reward, step outside of home at night reward]")
 parser.add_argument('--svision',type=int,default=360)
 parser.add_argument('--details',type=str,default='')
-parser.add_argument('--train_m',type=str,default='')
+parser.add_argument('--train_m',type=str,default='',help="Identity number of the model")
 parser.add_argument('--naction',type=int,default=0)
-parser.add_argument('--lstm_size',type=int,default=128)
+parser.add_argument('--reccurent_type', choices=['LSTM', 'GRU','simple'], default='LSTM')
+parser.add_argument('--reccurent_size',type=int,default=128)
 parser.add_argument('--night_length',type=int,default=20)
-parser.add_argument('--clue', action='store_true')
-parser.add_argument('--nofood', action='store_true')
+parser.add_argument('--clue',action='store_true',help="Add a clue to the network input or not")
+parser.add_argument('--nofood', action='store_true',help="Remove food at night")
+parser.add_argument('--progress',type=int,default=0)
+parser.add_argument('--L1L2', action='store_true',help="add L1L2 regularization to reccurent layer")
+parser.add_argument('--he_norm', action='store_true')
 args = parser.parse_args()
 import numpy as np
 import tensorflow as tf
@@ -40,16 +43,22 @@ python_random.seed(args.seed)
 tf.set_random_seed(args.seed)
 import skvideo.io
 from keras.models import Model,load_model
-from keras.layers import Input, Dense, Lambda,LSTM,TimeDistributed,convolutional,Flatten,merge
+from keras.layers import Input, Dense, Lambda,TimeDistributed,convolutional,Flatten,merge
+if args.reccurent_type=='GRU':
+    from keras.layers import GRU as LSTM
+elif args.reccurent_type=='simple':
+    from keras.layers import SimpleRNN as LSTM
+else:
+    from keras.layers import LSTM 
 from keras.layers.normalization import BatchNormalization
-from keras.optimizers import adam,rmsprop
+from keras.optimizers import adam,rmsprop,sgd
 from keras import backend as K
 from APES import *
 from time import time
 from buffer import BufferLSTM as Buffer
 from copy import deepcopy
 import os
-#File_Signature = int(round(time()))
+
 File_Signature = args.filesignature
 #The folder name were we created subfolder to store each experiments.  
 EF = 'output'
@@ -73,7 +82,7 @@ def GenerateSettingsLine():
     line.append(args.seed)
     line.append(args.rwrdschem)
     line.append(args.svision)
-    line.append(args.lstm_size)
+    line.append(args.reccurent_size)
     line.append("\""+args.details+"\"")
     return ','.join([str(x) for x in line])
 
@@ -82,6 +91,7 @@ with open ('{}/features.results.out'.format(EF),'a') as f:
     f.write('{}\n{}\n'.format(File_Signature,line))
 
 def WriteInfo(epis,t,epis_rwrd,start,rwsc,eptype,trqavg,tsqavg,eaten_num,night_home,morning_home):
+    "Write the hyperparamters to another file"
     global File_Signature
     with open('{}/{}/exp_details.csv'.format(EF,File_Signature),'a') as outp:
         outp.write('{},{},{},{},{},{},{},{},{},{},{}\n'.format(epis,t,epis_rwrd,start,rwsc,eptype,trqavg,tsqavg,eaten_num,night_home,morning_home))
@@ -93,14 +103,7 @@ def New_Reward_Function(agents,foods,rwrdschem,world,AES,Terminated):
         * foods: dictionary of all foods
         * rwrdschem: Reward Schema (More info in World __init__)
         * world: World Map
-        * AES: one element array
-    TODO:
-        * copy this function to class or __init__ documentation as example of how to build customer reward function
-        * Assign Reward To Agents
-        * Impelent the Food Reward Part depending on the decision of who take the food reward if two 
-          agent exist in food range in same time
-        * Change All Ranges to .ControlRange not (-1) it's -1 only for testing purpuse
-        * Change Punish per step to not punish when agent do nothing"""
+        * AES: one element array"""
     def ResetagentReward(ID):
         # We will penalize for steps in dark out of home from main loop not here.
         agents[ID].CurrentReward=0 # rwrdschem[2] if len(agents[ID].NextAction)>0 else 0
@@ -159,6 +162,11 @@ def _FindAgentOutput(self,ID,array,agents):
             ls['agentori{}'.format(oID)]=np.array([0,0,0,0],dtype=bool)
     return ls
 def SetupEnvironment():
+    """
+    Create the environment (World)
+    Return:
+        * game: World instance
+    """
     Start = time()
     #Add Pictures
     Settings.SetBlockSize(20)
@@ -194,6 +202,17 @@ def SetupEnvironment():
     return game
 
 def createLayers(insize,in_conv,naction):
+    """
+    Create the neural network
+    Args:
+        * insize: the size of  orientation+clue.
+        * in_conv: the size of convloutional branch.
+        * naction: output numer of actions.
+    Return:
+        * c: Convolutional layer input
+        * x: Fully connected layer input
+        * z: The network output layer.
+    """
     c = Input(shape=in_conv)
     con_process = c
     con_process = TimeDistributed(convolutional.Conv2D(filters=6,kernel_size=(3,3),activation="relu",padding="same",strides=1))(con_process)
@@ -205,7 +224,14 @@ def createLayers(insize,in_conv,naction):
     h = TimeDistributed(Dense(args.hidden_size, activation=args.activation))(h)
     if args.batch_norm and i != args.layers - 1:
         h = BatchNormalization(axis=1)(h)
-    h = LSTM(args.lstm_size,return_sequences=True,stateful=False)(h)
+
+    if args.L1L2:
+        h = LSTM(args.reccurent_size,return_sequences=True,stateful=False, kernel_regularizer='l1_l2')(h)
+    elif args.he_norm:
+        h = LSTM(args.reccurent_size,return_sequences=True,stateful=False, kernel_initializer="he_normal")(h)
+    else:
+        h = LSTM(args.reccurent_size,return_sequences=True,stateful=False)(h)
+
     y = TimeDistributed(Dense(naction + 1))(h)
     if args.advantage == 'avg':
       z = TimeDistributed(Lambda(lambda a: K.expand_dims(a[:,0], axis=-1) + a[:,1:] - K.mean(a[:, 1:], keepdims=True), output_shape=(naction,)))(y)
@@ -249,7 +275,7 @@ def TryModel(model,game):
     game.GenerateWorld()
     AIAgent.Direction='E'
     game.Step()
-    img = game.BuildImage()
+    #img = game.BuildImage()
     rwtc =0# RandomWalk(game)
     Start = time()
     episode_reward=0
@@ -351,7 +377,12 @@ if args.train_m=='':
     c,x, z = createLayers(rest_size,conv_size,naction)
     model = Model(inputs=[c,x], outputs=z)
     model.summary()
-    optimizer = adam(lr=args.optimizer_lr) if args.optimizer=='adam' else rmsprop(lr=args.optimizer_lr)
+    if args.optimizer =='adam':
+        optimizer = adam(lr=args.optimizer_lr)
+    elif args.optimizer =='rmsprop':
+        optimizer = rmsprop(lr=args.optimizer_lr)
+    elif args.optimizer =='sgd':
+        optimizer =sgd(lr=args.optimizer_lr) 
     model.compile(optimizer=optimizer, loss='mse')
 
     print('test from scractch')
@@ -360,8 +391,8 @@ if args.train_m=='':
     target_model = Model(inputs=[c,x], outputs=z)
     target_model.set_weights(model.get_weights())
 else:
-    model = load_model('morning_night/{}/MOD/model.h5'.format(args.train_m))
-    target_model = load_model('morning_night/{}/MOD/target_model.h5'.format(args.train_m))
+    model = load_model('{}/{}/MOD/model.h5'.format(EF,args.train_m))
+    target_model = load_model('{}/{}/MOD/target_model.h5'.format(EF,args.train_m))
 mem = Buffer(args.replay_size)
 #Exploration decrease amount:
 EDA = args.exploration/(args.totalsteps*args.vanish)
@@ -375,8 +406,8 @@ if not os.path.exists('{}/{}'.format(EF,File_Signature)):
         os.makedirs('{}/{}/VID'.format(EF,File_Signature))
         os.makedirs('{}/{}/MOD'.format(EF,File_Signature))
 
-progress=0
-i_episode=0
+progress=args.progress
+i_episode=int(args.progress/160)
 while progress<args.totalsteps:
     i_episode+=1
     game.GenerateWorld()
@@ -384,7 +415,7 @@ while progress<args.totalsteps:
     Start = time()
     #First Step only do the calculation of the current observations for all agents
     game.Step()
-    img =game.BuildImage()
+    #img =game.BuildImage()
     episode_reward=0
     cnn,rest = AIAgent.Convlutional_output()
     day=False
@@ -405,7 +436,7 @@ while progress<args.totalsteps:
         if (t%args.night_length)==0:
             day = not day
 
-        args.exploration = max(args.exploration-EDA,0.1)
+        args.exploration = max(args.exploration-EDA,args.exploration_platue)
         pre_cnn[t]=cnn
         pre_rest[t]=rest
         #Generate action for the agent.
@@ -465,10 +496,9 @@ while progress<args.totalsteps:
     if i_episode%10==0:
         TryModel(model,game)
         print("Average reward per episode {}".format(total_reward /i_episode))
-    if ((args.batch_size*2)<i_episode<400) or i_episode%100==0:
+    #if ((args.batch_size*2)<i_episode<200) or i_episode%100==0:
+    if i_episode%100==0:
         model.save('{}/{}/MOD/model_eps:{}.h5'.format(EF,File_Signature,i_episode))
-        print('only one model was saved')
-        exit()
 model.save('{}/{}/MOD/model.h5'.format(EF,File_Signature))
 target_model.save('{}/{}/MOD/target_model.h5'.format(EF,File_Signature))
 TryModel(model,game)
