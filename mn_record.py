@@ -46,13 +46,7 @@ def New_Reward_Function(agents,foods,rwrdschem,world,AES,Terminated):
         * rwrdschem: Reward Schema (More info in World __init__)
         * world: World Map
         * AES: one element array
-    TODO:
-        * copy this function to class or __init__ documentation as example of how to build customer reward function
-        * Assign Reward To Agents
-        * Impelent the Food Reward Part depending on the decision of who take the food reward if two 
-          agent exist in food range in same time
-        * Change All Ranges to .ControlRange not (-1) it's -1 only for testing purpuse
-        * Change Punish per step to not punish when agent do nothing"""
+        """
     def ResetagentReward(ID):
         # We will penalize for steps in dark out of home from main loop not here.
         agents[ID].CurrentReward=0 # rwrdschem[2] if len(agents[ID].NextAction)>0 else 0
@@ -111,6 +105,11 @@ def _FindAgentOutput(self,ID,array,agents):
     return ls
 
 def SetupEnvironment():
+    """
+    Create the environment (World)
+    Return:
+        * game: World instance
+    """
     global episode_length
     Start = time()
     #Add Pictures
@@ -154,7 +153,7 @@ def trace_tracker(prev_h,cur_h,prev_f,cur_f):
         * cur_h:  boolean of agent being at home currently.
         * prev_f: boolean of agent being at food field at previous step.
         * cur_f:  boolean of agent being at food fielad at current step.
-    Return:
+    Return
         * state: string of two characters, First character either "X" eXit or "E" Entered. Second character "H" Home or "F" field". "--" means nothing happened.
     """
     status='--'
@@ -175,6 +174,17 @@ def trace_tracker(prev_h,cur_h,prev_f,cur_f):
     return status
 
 def createLayers(insize,in_conv,naction):
+    """
+    Create the neural network
+    Args:
+        * insize: the size of  orientation+clue.
+        * in_conv: the size of convloutional branch.
+        * naction: output numer of actions.
+    Return:
+        * c: Convolutional layer input
+        * x: Fully connected layer input
+        * z: The network output layer.
+    """
     c = Input(batch_shape=in_conv)
     con_process = c
     con_process = TimeDistributed(convolutional.Conv2D(filters=6,kernel_size=(3,3),activation="relu",padding="same",strides=1))(con_process)
@@ -194,6 +204,17 @@ def createLayers(insize,in_conv,naction):
 
 
 def TryModel(model,game):
+    """
+    Testing the model on a game.
+    Args:
+        * model: the model to be tested.
+        * game: the world instance to test the model on.
+    Return:
+        * eaten: the count of eaten food.
+        * Start: duration of the episode.
+        * lstm_episode: reccurent activations.
+        * episode_reward: the episode reward.
+    """
     global AIAgent,TestingCounter,manipulation, episode_length
     TestingCounter+=1
     if args.render:
