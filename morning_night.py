@@ -269,14 +269,9 @@ def TryModel(model,game):
     #print('Testing Target Model')
     global AIAgent,File_Signature,TestingCounter
     TestingCounter+=1
-    #if TestingCounter%10==0:
-    #    writer = skvideo.io.FFmpegWriter("output/{}/VID/{}_Test.avi".format(File_Signature,TestingCounter))
-    #    writer2 = skvideo.io.FFmpegWriter("output/{}/VID/{}_TestAG.avi".format(File_Signature,TestingCounter))
     game.GenerateWorld()
     AIAgent.Direction='E'
     game.Step()
-    #img = game.BuildImage()
-    rwtc =0# RandomWalk(game)
     Start = time()
     episode_reward=0
     cnn,rest = AIAgent.Convlutional_output()
@@ -285,9 +280,7 @@ def TryModel(model,game):
         rest = np.concatenate([rest,[not day]])
     all_cnn = np.zeros(conv_size,dtype=np.int8)
     all_rest = np.zeros(rest_size,dtype=np.int8)
-    #if TestingCounter%10==0:
-    #    writer.writeFrame(np.array(img*255,dtype=np.uint8))
-    #    writer2.writeFrame(np.array(game.AgentViewPoint(AIAgent.ID)*255,dtype=np.uint8))
+
     eaten = 0
     morning_home=0
     night_home=0
@@ -303,10 +296,6 @@ def TryModel(model,game):
         AIAgent.NextAction = Settings.PossibleActions[action]
         AIAgent.AddAction(action)
         game.Step()
-        
-        #if TestingCounter%10==0:
-        #    writer.writeFrame(np.array(game.BuildImage()*255,dtype=np.uint8))
-        #    writer2.writeFrame(np.array(game.AgentViewPoint(AIAgent.ID)*255,dtype=np.uint8))
 
         #Remove any trace of food during night.
         if (not day) and (args.nofood):
@@ -338,18 +327,10 @@ def TryModel(model,game):
         if done:
             break
 
-    #if TestingCounter%10==0:
-    #    writer.close()
-    #    writer2.close()
-    #if t>=999:
-    #    plt.imsave('output/{}/PNG/{}_Test.png'.format(File_Signature,TestingCounter),img)
-    #else:
-        #os.remove("output/{}/VID/{}_Test.avi".format(File_Signature,TestingCounter))
-        #os.remove("output/{}/VID/{}_TestAG.avi".format(File_Signature,TestingCounter))
 
     Start = time()-Start
     print(t)
-    WriteInfo(TestingCounter,t+1,episode_reward,Start,rwtc,'Test','0','0',eaten,night_home,morning_home)
+    WriteInfo(TestingCounter,t+1,episode_reward,Start,0,'Test','0','0',eaten,night_home,morning_home)
 def Remove_Uneeded():
     global AIAgent
     AIAgent.NNFeed['observed']=''
@@ -411,7 +392,6 @@ i_episode=int(args.progress/160)
 while progress<args.totalsteps:
     i_episode+=1
     game.GenerateWorld()
-    rwtc=0# = RandomWalk(game)
     Start = time()
     #First Step only do the calculation of the current observations for all agents
     game.Step()
@@ -489,7 +469,7 @@ while progress<args.totalsteps:
     t = t+1
     progress+=t
     
-    WriteInfo(i_episode,t,episode_reward[0],Start,rwtc,'train',qpr,qpo,eaten,night_home,morning_home)
+    WriteInfo(i_episode,t,episode_reward[0],Start,0,'train',qpr,qpo,eaten,night_home,morning_home)
     print("Episode {} finished after {} timesteps, episode reward {} Tooks {}s,eaten:{},night_home:{},morning_home:{}, Total Progress:{}".format(i_episode, t, episode_reward,Start,eaten,night_home,morning_home,progress))
     print(len(lst_reward))
     total_reward += episode_reward
