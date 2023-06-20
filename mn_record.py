@@ -1,23 +1,21 @@
+# The purpose of this file is to record simulations based on trained models. The trained models must be located in  output/#Model_number/MOD/  and the simulations will be stored in a folder called simulations in #Model_nmber directory
 import argparse
 from Scenarios import Construct_Scenario,Scenarios,Scenarios_desc
 parser = argparse.ArgumentParser()
-parser.add_argument('--num_eps', type=int, default=1000)
-parser.add_argument('--episode_length', type=int, default=320)# 1000 
-parser.add_argument('--hidden_size', type=int, default=32)#priority 2
-parser.add_argument('--rwrdschem',nargs='+',default=[0,1,-2.5],type=float)
-parser.add_argument('--svision',type=int,default=360)
-parser.add_argument('--details',type=str,default='')
-parser.add_argument('--train_m',type=str,default='')
-parser.add_argument('--file_m',type=str,default='')
+parser.add_argument('--num_eps', type=int, default=1000,help="Number of episodes when trying a simulation")
+parser.add_argument('--hidden_size', type=int, default=32,help="FC layer hidden size" )
+parser.add_argument('--rwrdschem',nargs='+',default=[0,1,-2.5],type=float,help="Reward scheme [,eating food reward, step outside of home at night reward]")
+parser.add_argument('--train_m',type=str,default='',help="Identity number of the model")
+parser.add_argument('--file_m',type=str,default='',help="full model name (used for intermediate saved models to check the progress of a model)")
 parser.add_argument('--naction',type=int,default=0)
-parser.add_argument('--clue',action='store_true')
+parser.add_argument('--clue',action='store_true',help="Add a clue to the network input or not")
 parser.add_argument('--optimizer', choices=['adam', 'rmsprop','sgd'], default='adam')
-parser.add_argument('--nofood', action='store_true')
-parser.add_argument('--render', action='store_true')
-parser.add_argument('--L1L2', action='store_true')
+parser.add_argument('--nofood', action='store_true',help="Remove food at night")
+parser.add_argument('--render', action='store_true',help="Generate videos")
+parser.add_argument('--L1L2', action='store_true',help="add L1L2 regularization to reccurent layer")
 parser.add_argument('--Scenario',type=int,default=0 ,help='Between 0-19. Check Scenarios.py for more information.')
 parser.add_argument('--reccurent_type', choices=['LSTM', 'GRU','simple'], default='LSTM')
-parser.add_argument('--lstm_size',type=int,default=128)
+parser.add_argument('--reccurent_size',type=int,default=128)
 args = parser.parse_args()
 import numpy as np
 import skvideo.io
@@ -113,6 +111,7 @@ def _FindAgentOutput(self,ID,array,agents):
     return ls
 
 def SetupEnvironment():
+    global episode_length
     Start = time()
     #Add Pictures
     Settings.SetBlockSize(20)
@@ -133,11 +132,11 @@ def SetupEnvironment():
 
     blue_Ag = Agent(Fname='APES/Pics/blue.jpg',
                     Power=3,
-                    VisionAngle=args.svision,Range=-1,
+                    VisionAngle=360,Range=-1,
                     PdstName='PM',
                     ActionMemory=args.naction)
     print(blue_Ag.ID)
-    game=World(RewardsScheme=args.rwrdschem,StepsLimit=args.episode_length,RewardFunction=New_Reward_Function)
+    game=World(RewardsScheme=args.rwrdschem,StepsLimit=episode_length,RewardFunction=New_Reward_Function)
     #Agents added first has priority of executing there actions first.
     #game.AddAgents([ragnt])
     game.AddAgents([blue_Ag])
@@ -186,24 +185,22 @@ def createLayers(insize,in_conv,naction):
     h = TimeDistributed(Dense(args.hidden_size, activation='tanh'))(h)
     h = TimeDistributed(Dense(args.hidden_size, activation='tanh'))(h)
     if args.L1L2:
-        h = LSTM(args.lstm_size,return_sequences=True,stateful=True, kernel_regularizer='l1_l2')(h)
+        h = LSTM(args.reccurent_size,return_sequences=True,stateful=True, kernel_regularizer='l1_l2')(h)
     else:
-        h = LSTM(args.lstm_size,return_sequences=True,stateful=True)(h)
+        h = LSTM(args.reccurent_size,return_sequences=True,stateful=True)(h)
     y = TimeDistributed(Dense(naction + 1))(h)
     z = TimeDistributed(Lambda(lambda a: K.expand_dims(a[:,0], axis=-1) + a[:,1:] - K.max(a[:, 1:], keepdims=True), output_shape=(naction,)))(y)
     return c,x, z
 
 
 def TryModel(model,game):
-    global AIAgent,TestingCounter,manipulation
+    global AIAgent,TestingCounter,manipulation, episode_length
     TestingCounter+=1
     if args.render:
         writer = skvideo.io.FFmpegWriter("{}/{}/VID/{}_Test.avi".format(EF,args.train_m,TestingCounter))
-        writer2 = skvideo.io.FFmpegWriter("{}/{}/VID/{}_TestAG.avi".format(EF,args.train_m,TestingCounter))
     game.GenerateWorld()
     AIAgent.Direction='E'
     game.Step()
-    img = game.BuildImage()
     Start = time()
     episode_reward=0
     cnn,rest = AIAgent.Convlutional_output()
@@ -212,16 +209,16 @@ def TryModel(model,game):
         rest = np.concatenate([rest,[not day]])
     all_activity=[]
     if args.render:
+        img = game.BuildImage()
         writer.writeFrame(np.array(img*255,dtype=np.uint8))
-        writer2.writeFrame(np.array(game.AgentViewPoint(AIAgent.ID)*255,dtype=np.uint8))
     eaten = 0
     morning_home=0
     night_home=0
     prev_home=True
     prev_field=False
-    lstm_episode_data = np.zeros((args.episode_length,args.lstm_size))
-    episode_reward=np.zeros(args.episode_length)
-    for t in range(args.episode_length):
+    lstm_episode_data = np.zeros((episode_length,args.reccurent_size))
+    episode_reward=np.zeros(episode_length)
+    for t in range(episode_length):
         day = bool(int(manipulation[t]))
         q,h = model.predict([cnn[np.newaxis,np.newaxis],rest[np.newaxis,np.newaxis]], batch_size=1)
         lstm_episode_data[t]=h[0,0]
@@ -234,7 +231,6 @@ def TryModel(model,game):
         
         if args.render:
             writer.writeFrame(np.array(game.BuildImage()*255,dtype=np.uint8))
-            writer2.writeFrame(np.array(game.AgentViewPoint(AIAgent.ID)*255,dtype=np.uint8))
 
         #Remove any trace of food during night.
         if (not day) and (args.nofood):
@@ -271,7 +267,6 @@ def TryModel(model,game):
     #exit()
     if args.render:
         writer.close()
-        writer2.close()
 
     print(eaten)
     Start = time()-Start
@@ -282,9 +277,9 @@ EF = 'output'
 data = {}
 manipulation = Construct_Scenario(Scenarios[args.Scenario])
 print(manipulation)
-args.episode_length = len(manipulation)
+episode_length = len(manipulation)
 
-for i in range(args.episode_length):
+for i in range(episode_length):
     data[i]=[]
 # Convert the Scenario number to specific morning/night patteren.
 manipulation = Construct_Scenario(Scenarios[args.Scenario])
@@ -321,8 +316,8 @@ else:
     model = Model(inputs=X.inputs,outputs=[X.get_layer(index=9).output,X.get_layer(index=7).output])
 
 fs = (Settings.WorldSize[0]*Settings.BlockSize[0],Settings.WorldSize[1]*Settings.BlockSize[1])
-lstm_data = np.zeros((args.num_eps,args.episode_length,args.lstm_size))
-episodes_rewards= np.zeros((args.num_eps,args.episode_length))
+lstm_data = np.zeros((args.num_eps,episode_length,args.reccurent_size))
+episodes_rewards= np.zeros((args.num_eps,episode_length))
 for i in range(args.num_eps):
     ate,sptime,lstm_data[i],episodes_rewards[i] = TryModel(model,game)
     print('episode:{},ate:{},spent:{} seconds'.format(i,ate,round(sptime,3)))
