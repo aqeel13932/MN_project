@@ -16,6 +16,7 @@ parser.add_argument('--L1L2', action='store_true',help="add L1L2 regularization 
 parser.add_argument('--Scenario',type=int,default=0 ,help='Between 0-19. Check Scenarios.py for more information.')
 parser.add_argument('--reccurent_type', choices=['LSTM', 'GRU','simple'], default='LSTM')
 parser.add_argument('--reccurent_size',type=int,default=128)
+parser.add_argument('--static', action='store_true',help="Generate static environments between different runs")
 args = parser.parse_args()
 import numpy as np
 import skvideo.io
@@ -37,6 +38,11 @@ from APES import *
 from time import time
 import os
 import pandas as pd
+
+if args.static:
+    np.random.seed(13357)
+
+
 
 def New_Reward_Function(agents,foods,rwrdschem,world,AES,Terminated):
     """Calculate All agents rewards
@@ -201,9 +207,9 @@ def createLayers(insize,in_conv,naction):
     y = TimeDistributed(Dense(naction + 1))(h)
     z = TimeDistributed(Lambda(lambda a: K.expand_dims(a[:,0], axis=-1) + a[:,1:] - K.max(a[:, 1:], keepdims=True), output_shape=(naction,)))(y)
     return c,x, z
+seeds=list(range(args.num_eps))
 
-
-def TryModel(model,game):
+def TryModel(model,game,i):
     """
     Testing the model on a game.
     Args:
@@ -215,11 +221,14 @@ def TryModel(model,game):
         * lstm_episode: reccurent activations.
         * episode_reward: the episode reward.
     """
-    global AIAgent,TestingCounter,manipulation, episode_length
+    global AIAgent,TestingCounter,manipulation, episode_length,seeds
+    if args.static:
+        np.random.seed(seeds[i])
     TestingCounter+=1
     if args.render:
         writer = skvideo.io.FFmpegWriter("{}/{}/VID/{}_Test.avi".format(EF,args.train_m,TestingCounter))
     game.GenerateWorld()
+    print(game.world)
     AIAgent.Direction='E'
     game.Step()
     Start = time()
@@ -267,8 +276,6 @@ def TryModel(model,game):
         athome = game.world[4,4]==AIAgent.ID
         atfield= np.argwhere(game.world[:3,:3]==1001).shape[0]>0
         data[t].append(trace_tracker(prev_home,athome,prev_field,atfield))
-        #print('s:{},h:{},f:{},d:{},result:{}'.format(t,athome,atfield,day,data[i][-1]))
-        #print(trace_tracker(prev_home,athome,prev_field,atfield))
         prev_home = athome
         prev_field=atfield
         if (not day) and (not athome):
@@ -340,7 +347,7 @@ fs = (Settings.WorldSize[0]*Settings.BlockSize[0],Settings.WorldSize[1]*Settings
 lstm_data = np.zeros((args.num_eps,episode_length,args.reccurent_size))
 episodes_rewards= np.zeros((args.num_eps,episode_length))
 for i in range(args.num_eps):
-    ate,sptime,lstm_data[i],episodes_rewards[i] = TryModel(model,game)
+    ate,sptime,lstm_data[i],episodes_rewards[i] = TryModel(model,game,i)
     print('episode:{},ate:{},spent:{} seconds'.format(i,ate,round(sptime,3)))
     model.reset_states()
 
@@ -349,13 +356,16 @@ stor_dir= '{}/{}/simulations/'.format(EF,args.train_m)
 print('Storing results in {}'.format(stor_dir))
 if not os.path.exists(stor_dir):
     os.makedirs(stor_dir)
-
+static=''
+if args.static:
+    static='_static'
 if args.file_m!='':
-    df.to_csv(stor_dir+'states_{}_{}.csv'.format(args.Scenario,args.file_m),index=False)
-    np.save(stor_dir+'lstm_states_{}_{}'.format(args.Scenario,args.file_m),lstm_data)
-    np.save(stor_dir+'rewards_{}_{}'.format(args.Scenario,args.file_m),episodes_rewards)
+    suffix1= '_{}_{}{}.csv'.format(args.Scenario,args.file_m,static)
+    suffix2= '_{}_{}{}'.format(args.Scenario,args.file_m,static)
 else:
-    df.to_csv(stor_dir+'states_{}.csv'.format(args.Scenario),index=False)
-    np.save(stor_dir+'lstm_states_{}'.format(args.Scenario),lstm_data)
-    np.save(stor_dir+'rewards_{}'.format(args.Scenario),episodes_rewards)
+    suffix1= '_{}{}.csv'.format(args.Scenario,static)
+    suffix2= '_{}{}'.format(args.Scenario,static)
 
+df.to_csv(stor_dir+'states'+suffix1,index=False)
+np.save(stor_dir+'lstm_states'+suffix2,lstm_data)
+np.save(stor_dir+'rewards'+suffix2,episodes_rewards)
