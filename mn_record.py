@@ -1,4 +1,4 @@
-# The purpose of this file is to record simulations based on trained models. The trained models must be located in  output/#Model_number/MOD/  and the simulations will be stored in a folder called simulations in #Model_nmber directory
+# Record simulations based on trained models. The trained models must be located in  output/#Model_number/MOD/  and the simulations will be stored in a folder called simulations in #Model_nmber directory
 import argparse
 from Scenarios import Construct_Scenario,Scenarios,Scenarios_desc
 parser = argparse.ArgumentParser()
@@ -228,7 +228,6 @@ def TryModel(model,game,i):
     if args.render:
         writer = skvideo.io.FFmpegWriter("{}/{}/VID/{}_Test.avi".format(EF,args.train_m,TestingCounter))
     game.GenerateWorld()
-    print(game.world)
     AIAgent.Direction='E'
     game.Step()
     Start = time()
