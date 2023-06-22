@@ -115,7 +115,8 @@ def Convlutional_output(dd):
     global AIAgent
     cnn =np.stack([ AIAgent.NNFeed['mypos'],
                     AIAgent.NNFeed['food']],axis=-1)
-    rest = np.array(dd)
+    rest = np.array(dd) if args.clue else np.zeros((0))
+    
     return cnn,rest
 
 def SetupEnvironment():
@@ -255,7 +256,10 @@ def TryModel(model,game,i):
     episode_reward=np.zeros(episode_length)
     for t in range(episode_length):
         day = bool(int(manipulation[t]))
-        q,h = model.predict([cnn[np.newaxis,np.newaxis],rest[np.newaxis,np.newaxis,np.newaxis]], batch_size=1)
+        if args.clue:
+            q,h = model.predict([cnn[np.newaxis,np.newaxis],rest[np.newaxis,np.newaxis,np.newaxis]], batch_size=1)
+        else:
+            q,h = model.predict([cnn[np.newaxis,np.newaxis],rest[np.newaxis,np.newaxis]], batch_size=1)
         lstm_episode_data[t]=h[0,0]
         action = np.argmax(q[0,0])
 
@@ -296,7 +300,6 @@ def TryModel(model,game,i):
         #print "reward:", reward
         if done:
             break
-    #exit()
     if args.render:
         writer.close()
 
@@ -335,7 +338,10 @@ else:
     X = load_model('{}/{}/MOD/model.h5'.format(EF,args.train_m))
     model = Model(inputs=X.inputs,outputs=[X.get_layer(index=9).output,X.get_layer(index=7).output])
     #We need to specifiy the batch size 
-    c,x,z = createLayers((1,None,1),(1,None, 5, 5, 2), Settings.PossibleActions.shape[0])
+    if args.clue:
+        c,x,z = createLayers((1,None,1),(1,None, 5, 5, 2), Settings.PossibleActions.shape[0])
+    else:
+        c,x,z = createLayers((1,None,0),(1,None, 5, 5, 2), Settings.PossibleActions.shape[0])
     model2 = Model(inputs=[c,x], outputs=z)
     mweights = model.get_weights()
     model2.set_weights(mweights)
