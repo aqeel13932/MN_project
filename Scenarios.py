@@ -1,4 +1,11 @@
 def Construct_Scenario(Scenario):
+    """
+    Convert a Scenario from M2,N2 to the form of 1100.
+    Args:
+        * Scenario: a stirng of nature "M2,N2..." 
+    return: 
+        * result: a string of nature "1100..."
+    """
     Scenario = Scenario.split(',')
     result = ""
     for part in Scenario:
@@ -10,8 +17,10 @@ def Construct_Scenario(Scenario):
         result+=morning_or_night*int(part[1:])
     return result
 
-# Jetlag everytime step, for 3rd day and 7th day. (moving west or east).
 def Jetlag_exp_generator(base_experiment,counter=22,day=3,morning_night='M',increase=True):
+    """
+    Jetlag everytime step, for 3rd day and 7th day. (moving west or east).
+    """
     exp = []
     desc=[]
     ranger= (1,21) if increase else (-20,0)
@@ -27,8 +36,10 @@ def Jetlag_exp_generator(base_experiment,counter=22,day=3,morning_night='M',incr
         desc.append(des)
     return exp,desc
 
-# Function to generate the experiment rhythm with changing in 1.
 def Generate_experiments(prefix,suffix,counter=22,day=3,morning_night='M',extra=""):
+    """
+    Function to generate the experiment rhythm with changing in 1.
+    """
     exp = []
     desc=[]
     counter+=1
@@ -65,8 +76,10 @@ def Generate_experiments(prefix,suffix,counter=22,day=3,morning_night='M',extra=
     print('\n'.join(map(str, exp))) 
     print('\n'.join(map(str, desc))) 
 
-# Function to generate the experiment rhythm with changing in 1.
 def Generate_experiments_jetlag_timestep(prefix,suffix,counter=22,day=3,morning_night='M'):
+    """
+    Function to generate the experiment rhythm with changing in 1.
+    """
     exp = []
     desc=[]
     counter+=1
@@ -103,8 +116,10 @@ def Generate_experiments_jetlag_timestep(prefix,suffix,counter=22,day=3,morning_
     print('\n'.join(map(str, exp))) 
     print('\n'.join(map(str, desc)))
 
-# Perturb one timestep in a constant simulation (ex. all night except one time step in the 7th day)
 def Constant_Cue_SinglePertrubation(counter=22,day=3,morning_night='M'):
+    """
+    Perturb one timestep in a constant simulation (ex. all night except one time step in the 7th day)
+    """
     if morning_night not in ['M','N']:
         raise Exception('morning_night should be either M or N ')
     exp = []
@@ -123,8 +138,10 @@ def Constant_Cue_SinglePertrubation(counter=22,day=3,morning_night='M'):
     print('\n'.join(map(str, exp))) 
     print('\n'.join(map(str, desc)))
     
-# Perturb one timestep in a constant simulation in the last 4 days (ex. all night except one time step in the 7th day)
 def Constant_Cue_last4_SinglePertrubation(counter=22,day=3,morning_night='M'):
+    """
+    Perturb one timestep in a constant simulation in the last 4 days (ex. all night except one time step in the 7th day)
+    """
     if morning_night not in ['M','N']:
         raise Exception('morning_night should be either M or N ')
     exp = []
