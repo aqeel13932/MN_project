@@ -29,7 +29,6 @@ For example:
 
 `
 python morning_night.py 1 --exploration 1.0 --tau 0.001 --train_repeat 4 --activation tanh --advantage max --seed 1337 --batch_size 16 --totalsteps 6000000 --details "sample training" --rwrdschem 0 1 -2.5 --clue --max_timesteps 160 
-
 `
 
 `
