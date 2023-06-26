@@ -1,10 +1,4 @@
-#In this file:
-    # Food spawn in top left 5X5 square.
-    # Agent spawn in bottom right square.
-# Updated: 23-03-2020:
-    # mainpulation work for half a day  so instea of 8 values we have 16 values so 4 values per day that determine if its a day or night.
-# Updated: 25-03-2020:
-    # Updated the code, so the episode will laste for 320 timesteps instead of 160.
+# Record simulations for bifurcations based on trained models. The trained models must be located in  output/#Model_number/MOD/  and the simulations will be stored in a folder called simulations in #Model_nmber directory
 import argparse
 from Scenarios import Construct_Scenario,Scenarios,Scenarios_desc
 from miscellaneous import *
