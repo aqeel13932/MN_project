@@ -10,6 +10,7 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import scale
 from os import listdir
 from os.path import isfile, join
+from PyPDF2 import PdfFileReader
 
 # def Get_LSTM_Files(model,simulation):
 #     '''
@@ -44,6 +45,16 @@ def TSNE_scaled(model,simulation,ranges=[1]):
     print(x.shape,x_m.shape,x_scaled.shape)
     Calculate_TSNE(x_scaled,ranges=ranges) 
     
+def plot_model_performance(models,Normalized=False,Train=True,Test=True,window=100,wanted_columns=[2,8,9,10]):
+    """
+    Plot model performance for 
+    """
+    for i in models:
+        x = pd.read_csv('output/{}/exp_details.csv'.format(i),header=None)
+        if Normalized:
+            Normalizedata(x,wanted_columns)
+        plotdata(x,window,i,Train=Train,Test=Test)  
+        
 def Get_LSTM_Files(model,simulation):
     '''
     Return a list of progressive training models where a simulation exist.
@@ -135,7 +146,7 @@ def All_in_one7seeds(simulation,cycles=2,length=80,label=['','{}','',''],combine
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.show()
     
-def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,condition='XF',size=(13,7),xlim=None,specific_model=''):
+def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,condition='XF',size=(13,7),xlim=None,specific_model='',info_in_title=False,tiks_size=8):
 
     # Create some mock data
     data1= (Get_simulations_data(model,simulation,specific_model)==condition).values.sum(axis=0)
@@ -154,8 +165,8 @@ def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,co
     fig, ax1 = plt.subplots(figsize=size)
 
     color = 'tab:red'
-    ax1.set_xlabel(label[0])
-    ax1.set_ylabel(label[1].format(condition), color=color)
+    ax1.set_xlabel(label[0],fontsize=tiks_size+2)
+    ax1.set_ylabel(label[1].format(condition), color=color,fontsize=tiks_size+2)
     ax1.bar(t, data1, color=color,alpha=0.5)
     ax1.tick_params(axis='y', labelcolor=color)
     sim = str(simulation)
@@ -191,20 +202,25 @@ def All_in_one(model,simulation,cycles=2,label=('','{}','',''),combined=False,co
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = 'tab:blue'
-    ax2.set_ylabel(label[2], color=color)  # we already handled the x-label with ax1
+    ax2.set_ylabel(label[2], color=color,fontsize=tiks_size+2)  # we already handled the x-label with ax1
     ax2.plot(t, data2, color=color)
     ax2.plot(t, data3, color='tab:green')
     ax2.fill_between(t,data3+data3_std,data3-data3_std,alpha=0.2)
     ax2.tick_params(axis='y', labelcolor=color)
-    plt.title(label[3]+average+',Model:{}'.format(model))
+    if info_in_title:
+        plt.title(label[3]+average+',Model:{}'.format(model))
     
     if xlim:
         plt.xlim(xlim)
     else:
         plt.xlim(0,data1.shape[0])
-
+    
+    # Set ticks size
+    ax1.tick_params(labelsize=tiks_size)
+    ax2.tick_params(labelsize=tiks_size)
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     #plt.show()
+    return ax1,ax2
 
 
 
@@ -235,7 +251,107 @@ def Process_data(data,window):
         draw_data[i] = seperate_dataset(data[i*window:(i+1)*window])
     return draw_data
 
-def plot_data_seeds(window,models=[64],wd=[0,1,2,3],c=['g','r','b','purple'],dtype='train',
+def All_in_one(ax1,model,simulation,label=('','{}','',''),condition='XF',
+               xlim=None,specific_model='',info_in_title=False,tiks_size=8,
+              plot_char="",x_ticks=True,y1_ticks=True,y2_ticks=True,char_x=1,char_y=20):
+
+    data1= (Get_simulations_data(model,simulation,specific_model)==condition).values.mean(axis=0)
+    data2= Get_lstm_states(model,simulation,specific_model).sum(axis=(2)).mean(axis=0)
+    data3 = Get_rewards_data(model,simulation).mean(axis=0)
+    division = 8
+    mround = int(data3.shape[0]/division)
+    lst = []
+    for i in range(1,division+1):
+        start = (i-1)*mround
+        end = i*mround
+        lst.append(data3[start:end].mean())
+        
+    t = np.arange(data1.shape[0])
+
+    #fig, ax1 = plt.subplots(figsize=size)
+
+    color = 'blue'
+    ax1.plot(t, data2, color=color,lw=1)
+    #ax1.plot(np.arange(len(lst))*mround+(mround/2),lst,color='green')
+    ax1.set_xlabel(label[0],fontsize=tiks_size+2)
+    ax1.set_ylabel(label[1], color=color,fontsize=tiks_size+2)
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.set_xticks([0,40,80,120,160,200,240,280,320])
+    if not x_ticks:
+        ax1.set_xticklabels(["" for _ in range(9)])
+        
+    ax1.text(char_x,char_y,plot_char,color="k",horizontalalignment="left",verticalalignment="baseline",fontweight="bold")
+    sim = str(simulation)
+
+    factor =10
+    if len(sim)<4:
+        sim = Construct_Scenario(Scenarios[simulation])
+        print(Scenarios_desc[simulation])
+        factor=1
+    ###### Draw dark span over night code ########
+    i=0
+    count=0
+    while i <len(sim):
+        if sim[i] =='0':
+            count+=1
+            i+=1
+            continue
+        else:
+            if count>0:
+                start= (i-count)*factor
+                ## we used i-1 because the current step is not "1 or morning"
+                end = (i-1)*factor+factor
+                ax1.axvspan(start,end,lw=0, color="lightgrey")
+                count=0
+        i+=1
+    ### this is to handle if night in the end.
+    if count>0:
+        start= (i-count)*factor
+        ## we used i-1 because the current step is not "1 or morning"
+        end = (i-1)*factor+factor
+        ax1.axvspan(start,end,lw=0, color="lightgrey")
+        
+        count=0
+    ###############################################
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'red'
+    ax2.set_ylabel(label[2], color=color,fontsize=tiks_size+2)  # we already handled the x-label with ax1
+
+    ax2.bar(t, data1, color=color,width=1)
+    ax2.tick_params(axis='y', labelcolor=color)
+    if info_in_title:
+        plt.title(label[3]+average+',Model:{}'.format(model))
+    
+    if xlim:
+        plt.xlim(xlim)
+    else:
+        plt.xlim(0,data1.shape[0])
+        
+    ax1.set_yticks([-15,-10,-5,0,5,10,15])
+    ax2.set_yticks([0,0.2,0.4,0.6,0.8])
+    
+    # Set ticks size
+    ax1.tick_params(labelsize=tiks_size)
+    if not y1_ticks:
+        ax1.set_yticklabels(["" for _ in range(7)])
+    ax2.tick_params(labelsize=tiks_size)
+    if not y2_ticks:
+        ax2.set_yticklabels(["" for _ in range(5)])
+
+    return ax1,ax2
+
+
+def postprocess(file):
+    
+    pdffile = PdfFileReader(open(file, mode='rb'))
+    pdfsize = np.array([float(pdffile.getPage(0).mediaBox[2]),
+               float(pdffile.getPage(0).mediaBox[3])])
+    pdfdim = pdfsize*25.4/72. # points to mm
+    print("input plot breite:", pdfdim[0], "mm")
+    print("input plot hoehe:", pdfdim[1], "mm")
+    
+def plot_data_seeds(ax,window,models=[64],wd=[0,1,2,3],c=['g','r','b','purple'],dtype='train',
                    legend=['Reward','#Consumed food','#Steps at home during night',
                            '#Steps at home during morning'],title=''):
     '''
@@ -259,22 +375,24 @@ def plot_data_seeds(window,models=[64],wd=[0,1,2,3],c=['g','r','b','purple'],dty
             final=np.zeros((len(models),tmp.shape[0],4))
             final[idx] = tmp
             continue
-            assert False
-            
+
         final[idx] = Process_data(data[data[5]==dtype],window)
     mn = final.mean(axis=0)
     std = final.std(axis=0)#/np.sqrt(final.shape[0])
     
-    plt.figure(figsize=(13,5))
-    ax = plt.subplot(1,1,1)
+
     xvalues = np.arange(0,mn.shape[0])
     for i in wd:
         ax.plot(xvalues,mn[:,i],color=c[i],label=legend[i])
         ax.fill_between(xvalues,mn[:,i]+std[:,i],mn[:,i]-std[:,i],color=c[i],alpha=0.2,
                        label=legend[i]+' std')
-    plt.title(title)
-    plt.legend(loc=4)
-    return final
+    ax.axhline(y=0.0, color='k', linestyle='--',lw=1)
+    ax.set_xlabel("Training episodes [thousands]")
+    ax.set_ylabel("Average reward")
+    #ax.set_xlim(0,episodes_thousands[-1])
+    ax.set_ylim(-150,50)  # -186.114, 31.66
+    ax.set_xticks([0,50,100,150,200,250,300,350],[0,5,10,15,20,25,30,35])
+    ax.set_yticks([-150,-100,-50,0,50])
 
 def plotdata(data,window,i=None,Test=True,Train=True):
     if Test:
@@ -357,17 +475,17 @@ def Plot_neurons_activations(model,simulation,plot_neurons=[0,1,2],merge=False):
 def Get_simulations_data(model,simulation,model_ver='',static=False):
     if static:
         return np.load('output/{}/static/states{}_{}_static.csv'.format(model,model_ver,simulation))
-    return pd.read_csv('output/{}/states{}_{}.csv'.format(model,model_ver,simulation),header=None)
+    return pd.read_csv('output/{}/simulations/states{}_{}.csv'.format(model,model_ver,simulation))
 
 def Get_rewards_data(model,simulation,model_ver='',static=False):
     if static:
         return np.load('output/{}/static/rewards{}_{}_static.npy'.format(model,model_ver,simulation))
-    return np.load('output/{}/rewards{}_{}.npy'.format(model,model_ver,simulation))
+    return np.load('output/{}/simulations/rewards{}_{}.npy'.format(model,model_ver,simulation))
 
 def Get_lstm_states(model,simulation,model_ver='',static=False):
     if static:
         return np.load('output/{}/static/lstm_states{}_{}_static.npy'.format(model,model_ver,simulation))
-    return np.load('output/{}/lstm_states{}_{}.npy'.format(model,model_ver,simulation))
+    return np.load('output/{}/simulations/lstm_states{}_{}.npy'.format(model,model_ver,simulation))
 
 def Baseline_shadow(figsize=(13,7)):
     sim = Construct_Scenario(Scenarios[0])
